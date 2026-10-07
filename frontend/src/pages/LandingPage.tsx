@@ -1,5 +1,6 @@
 import { ArrowRight, Shield, Zap, Globe, TrendingUp, CheckCircle, Clock } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import WalletButton from '../components/WalletButton'
 
 export default function LandingPage() {
   return (
@@ -18,14 +19,7 @@ export default function LandingPage() {
               <a href="#how-it-works" className="text-gray-700 hover:text-green-600">How It Works</a>
               <a href="#features" className="text-gray-700 hover:text-green-600">Features</a>
             </div>
-            <div className="flex space-x-4">
-              <Link to="/farmer/dashboard" className="text-green-600 hover:text-green-700 font-medium">
-                Farmer Login
-              </Link>
-              <Link to="/buyer/dashboard" className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
-                Buyer Login
-              </Link>
-            </div>
+            <WalletButton />
           </div>
         </div>
       </nav>
