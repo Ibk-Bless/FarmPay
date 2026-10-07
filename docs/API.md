@@ -1,343 +1,131 @@
-# FarmPay API Documentation
+# FarmPay API
 
 Base URL: `http://localhost:4000/api` (development)
 
-## Authentication
+## Signing model
 
-All authenticated endpoints require a JWT token in the Authorization header:
+The API never holds user keys. Every write follows the same two steps:
 
-```
-Authorization: Bearer <token>
-```
+1. **Build:** call an action endpoint. It returns an unsigned, simulated transaction (`xdr`) for the right party to sign.
+2. **Submit:** the user signs the transaction in their wallet, and the client posts it to `POST /transactions`.
+
+The order id is the id assigned by the escrow contract. Amounts are decimal strings in USDC, with up to 7 decimal places.
 
 ## Endpoints
 
-### Health Check
+### Health
 
 **GET** `/health`
 
-Check API server status.
+```json
+{ "status": "ok", "escrowContractId": "CCD4..." }
+```
 
-**Response:**
+### Create order
+
+**POST** `/orders`. Signed by the **buyer**.
+
 ```json
 {
-  "status": "ok",
-  "message": "FarmPay API is running"
+  "buyer": "GBKX...",
+  "farmer": "GBJV...",
+  "arbiter": "GBPD...",
+  "amount": "1840.50",
+  "deliveryDeadline": "2026-10-14T00:00:00Z",
+  "reviewWindowHours": 72
 }
 ```
 
----
+Response:
 
-### Orders
-
-#### Create Order
-
-**POST** `/orders`
-
-Create a new purchase order and lock payment in escrow.
-
-**Request Body:**
 ```json
-{
-  "buyerId": "GABC123...",
-  "farmerId": "GDEF456...",
-  "crop": "Maize",
-  "quantity": 5000,
-  "unit": "kg",
-  "pricePerUnit": 0.42,
-  "totalAmount": 2100,
-  "deliveryDeadline": "2026-08-15T00:00:00Z",
-  "disputeWindowDays": 3
-}
+{ "action": "create", "xdr": "AAAAAgAAAAB..." }
 ```
 
-**Response:**
-```json
-{
-  "orderId": "ord_abc123",
-  "status": "locked",
-  "escrowTxHash": "abc123...",
-  "createdAt": "2026-05-17T10:00:00Z"
-}
-```
+After submitting, the response from `POST /transactions` includes the new `orderId`.
 
-#### Get Order
+### Get order
 
 **GET** `/orders/:orderId`
 
-Retrieve order details.
-
-**Response:**
-```json
-{
-  "orderId": "ord_abc123",
-  "buyerId": "GABC123...",
-  "farmerId": "GDEF456...",
-  "crop": "Maize",
-  "quantity": 5000,
-  "unit": "kg",
-  "totalAmount": 2100,
-  "status": "locked",
-  "deliveryDeadline": "2026-08-15T00:00:00Z",
-  "disputeDeadline": "2026-08-18T00:00:00Z",
-  "createdAt": "2026-05-17T10:00:00Z"
-}
-```
-
-#### List Orders
-
-**GET** `/orders?userId=<stellarAddress>&role=<buyer|farmer>&status=<status>`
-
-List orders for a user.
-
-**Query Parameters:**
-- `userId` (required): Stellar address
-- `role` (required): "buyer" or "farmer"
-- `status` (optional): "locked", "released", "disputed", "cancelled"
-
-**Response:**
-```json
-{
-  "orders": [
-    {
-      "orderId": "ord_abc123",
-      "crop": "Maize",
-      "quantity": 5000,
-      "totalAmount": 2100,
-      "status": "locked",
-      "createdAt": "2026-05-17T10:00:00Z"
-    }
-  ],
-  "total": 1
-}
-```
-
-#### Confirm Delivery
-
-**POST** `/orders/:orderId/confirm`
-
-Buyer confirms delivery and releases payment.
-
-**Request Body:**
-```json
-{
-  "buyerId": "GABC123...",
-  "notes": "Delivery received in good condition"
-}
-```
-
-**Response:**
-```json
-{
-  "orderId": "ord_abc123",
-  "status": "released",
-  "releaseTxHash": "def456...",
-  "releasedAt": "2026-08-15T14:30:00Z"
-}
-```
-
-#### Initiate Dispute
-
-**POST** `/orders/:orderId/dispute`
-
-Buyer raises a dispute about delivery.
-
-**Request Body:**
-```json
-{
-  "buyerId": "GABC123...",
-  "reason": "Quantity delivered was less than ordered"
-}
-```
-
-**Response:**
-```json
-{
-  "orderId": "ord_abc123",
-  "status": "disputed",
-  "disputeReason": "Quantity delivered was less than ordered",
-  "disputedAt": "2026-08-15T14:30:00Z"
-}
-```
-
----
-
-### Farmers
-
-#### Get Farmer Profile
-
-**GET** `/farmers/:farmerId`
-
-Retrieve farmer profile and statistics.
-
-**Response:**
-```json
-{
-  "farmerId": "GDEF456...",
-  "name": "Amara Diallo",
-  "location": "Ghana",
-  "joinedAt": "2025-01-15T00:00:00Z",
-  "stats": {
-    "totalDeliveries": 12,
-    "completedDeliveries": 12,
-    "onTimeRate": 100,
-    "totalValueDelivered": 25400
-  }
-}
-```
-
-#### Get Farmer Delivery History
-
-**GET** `/farmers/:farmerId/history`
-
-Retrieve farmer's on-chain delivery history.
-
-**Response:**
-```json
-{
-  "farmerId": "GDEF456...",
-  "deliveries": [
-    {
-      "orderId": "ord_abc123",
-      "crop": "Cashew",
-      "quantity": 2000,
-      "buyer": "West Africa Exports Ltd",
-      "amount": 1840,
-      "deliveredAt": "2025-03-20T00:00:00Z",
-      "txHash": "abc123..."
-    },
-    {
-      "orderId": "ord_def456",
-      "crop": "Maize",
-      "quantity": 5000,
-      "buyer": "NutriFood Processing Co.",
-      "amount": 2100,
-      "deliveredAt": "2025-08-15T00:00:00Z",
-      "txHash": "def456..."
-    }
-  ],
-  "total": 2
-}
-```
-
----
-
-### Buyers
-
-#### Get Buyer Profile
-
-**GET** `/buyers/:buyerId`
-
-Retrieve buyer profile and statistics.
-
-**Response:**
-```json
-{
-  "buyerId": "GABC123...",
-  "name": "West Africa Exports Ltd",
-  "location": "Ghana",
-  "joinedAt": "2024-11-01T00:00:00Z",
-  "stats": {
-    "totalOrders": 45,
-    "completedOrders": 43,
-    "activeOrders": 2,
-    "totalValuePurchased": 125000
-  }
-}
-```
-
-#### Get Buyer Order History
-
-**GET** `/buyers/:buyerId/history`
-
-Retrieve buyer's order history.
-
-**Response:**
-```json
-{
-  "buyerId": "GABC123...",
-  "orders": [
-    {
-      "orderId": "ord_abc123",
-      "crop": "Cashew",
-      "quantity": 2000,
-      "farmer": "Amara Diallo",
-      "amount": 1840,
-      "status": "released",
-      "completedAt": "2025-03-20T00:00:00Z"
-    }
-  ],
-  "total": 43
-}
-```
-
----
-
-## Error Responses
-
-All errors follow this format:
+Reads the order directly from the contract.
 
 ```json
 {
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Human-readable error message",
-    "details": {}
-  }
+  "id": "1",
+  "buyer": "GBKX...",
+  "farmer": "GBJV...",
+  "arbiter": "GBPD...",
+  "amount": "1840.5",
+  "deliveryDeadline": 1792195200,
+  "reviewWindow": 259200,
+  "reviewDeadline": 1791628672,
+  "status": "Delivered"
 }
 ```
 
-### Common Error Codes
+Timestamps are Unix seconds (ledger time). `reviewDeadline` is `0` until the farmer marks the order delivered.
 
-- `400` - Bad Request (invalid input)
-- `401` - Unauthorized (missing or invalid token)
-- `404` - Not Found (resource doesn't exist)
-- `409` - Conflict (order already confirmed, etc.)
-- `500` - Internal Server Error
+`status` is one of `Funded`, `Accepted`, `Delivered`, `Disputed`, `Released`, `Refunded` or `Resolved`.
 
-### Example Error Response
+### Order actions
+
+**POST** `/orders/:orderId/:action`
+
+Each action maps to one contract method. The signer comes from the order, so the client doesn't choose it.
+
+| Action | Signer | Contract method | Allowed when | Body |
+|---|---|---|---|---|
+| `accept` | farmer | `accept_order` | `Funded` | — |
+| `cancel` | buyer | `cancel_order` | `Funded`, or `Accepted` after the delivery deadline | — |
+| `deliver` | farmer | `mark_delivered` | `Accepted` | — |
+| `confirm` | buyer | `confirm_delivery` | `Delivered` | — |
+| `claim` | farmer, or `caller` | `claim_payment` | `Delivered`, after the review deadline | `{ "caller": "G..." }` (optional) |
+| `dispute` | buyer | `open_dispute` | `Delivered`, before the review deadline | `{ "reason": "Short by 200kg" }` |
+| `resolve` | arbiter | `resolve_dispute` | `Disputed` | `{ "farmerAmount": "800" }` |
+
+Response:
 
 ```json
-{
-  "error": {
-    "code": "INSUFFICIENT_BALANCE",
-    "message": "Buyer does not have sufficient USDC balance",
-    "details": {
-      "required": 2100,
-      "available": 1500
-    }
-  }
-}
+{ "orderId": "1", "action": "confirm", "xdr": "AAAAAgAAAAB..." }
 ```
 
----
+Each action is simulated against the contract before the transaction is returned. An action that isn't allowed in the current state fails at this point with an error, and the user never signs anything.
 
-## Rate Limiting
+### Submit signed transaction
 
-- **Rate Limit**: 100 requests per minute per IP
-- **Headers**: 
-  - `X-RateLimit-Limit`: Maximum requests per window
-  - `X-RateLimit-Remaining`: Remaining requests
-  - `X-RateLimit-Reset`: Time when limit resets (Unix timestamp)
+**POST** `/transactions`
 
----
+```json
+{ "signedXdr": "AAAAAgAAAAB..." }
+```
 
-## Webhooks (Future)
+Response:
 
-FarmPay will support webhooks for real-time notifications:
+```json
+{ "hash": "06ee39b6...", "orderId": "1" }
+```
 
-- `order.created` - New order created
-- `order.accepted` - Farmer accepted order
-- `order.delivered` - Delivery confirmed
-- `order.disputed` - Dispute raised
-- `payment.released` - Payment released to farmer
+`orderId` is only present for `create_order`. The API only relays transactions that make a single call to the configured escrow contract.
 
----
+## Errors
 
-## SDK Support (Future)
+```json
+{ "error": { "code": "TOO_EARLY", "message": "..." } }
+```
 
-Official SDKs planned for:
-- JavaScript/TypeScript
-- Python
-- Go
-- Rust
+| HTTP | Code | Cause |
+|---|---|---|
+| 400 | `MISSING_FIELD`, `INVALID_ADDRESS`, `INVALID_AMOUNT`, `INVALID_DEADLINE`, `INVALID_ORDER_ID`, `INVALID_PARTIES`, `INVALID_SPLIT`, `INVALID_TRANSACTION` | Bad input |
+| 403 | `UNAUTHORIZED` | The signer isn't allowed to perform this action |
+| 404 | `ORDER_NOT_FOUND`, `ACCOUNT_NOT_FOUND`, `NOT_FOUND` | Unknown order, unfunded account or unknown action |
+| 409 | `INVALID_STATUS`, `TOO_EARLY`, `TOO_LATE` | Action not allowed in the order's current state or at the current time |
+| 502 | `SIMULATION_FAILED`, `SUBMIT_FAILED`, `TRANSACTION_FAILED` | Network or RPC failure |
+
+Contract error codes map one-to-one to the contract's `Error` enum. See [contracts/escrow/README.md](../contracts/escrow/README.md#errors).
+
+## Planned
+
+- `GET /orders?party=<address>`: list a party's orders, indexed from contract events
+- `GET /farmers/:address/history`: delivery history built from `Released` and `Resolved` orders
+- Off-chain order details (crop, quantity, notes) stored alongside the on-chain order

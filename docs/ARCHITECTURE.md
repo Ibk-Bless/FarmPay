@@ -1,183 +1,73 @@
-# FarmPay Architecture
+# Architecture
 
-## System Overview
+FarmPay is a Soroban escrow on Stellar that guarantees payment for farm deliveries. The buyer pre-funds each order in USDC. Funds go to the farmer on confirmation or after a review window, and the farmer's cooperative arbitrates disputes.
 
-FarmPay is a decentralized escrow platform built on Stellar that enables instant farm-to-buyer settlements.
-
-## Architecture Diagram
+## Components
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        Frontend (React)                      │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   Buyer      │  │   Farmer     │  │   Delivery   │      │
-│  │  Dashboard   │  │  Dashboard   │  │   Profile    │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            │ HTTP/REST
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Backend API (Node.js)                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   Orders     │  │   Farmers    │  │   Buyers     │      │
-│  │   Routes     │  │   Routes     │  │   Routes     │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-│                                                               │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   Escrow     │  │   Payments   │  │   History    │      │
-│  │   Service    │  │   Service    │  │   Service    │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            │ Stellar SDK
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      Stellar Network                         │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   Soroban    │  │     USDC     │  │   Horizon    │      │
-│  │   Escrow     │  │   Payments   │  │     API      │      │
-│  │   Contract   │  │              │  │              │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    PostgreSQL Database                       │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │    Orders    │  │    Users     │  │   Metadata   │      │
-│  │   (off-chain)│  │  (profiles)  │  │              │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────┐   unsigned tx (xdr)   ┌──────────────────────┐
+│  Frontend (React)    │ ◀──────────────────── │  Backend (Express)   │
+│  + user's wallet     │ ── signed tx ───────▶ │  routes/orders.ts    │
+│    signs every write │                       │  stellar/escrow.ts   │
+└──────────────────────┘                       └──────────┬───────────┘
+                                                          │ Soroban RPC
+                                                          ▼
+                                   ┌─────────────────────────────────────┐
+                                   │  Stellar                            │
+                                   │  ┌───────────────┐  ┌────────────┐  │
+                                   │  │ FarmPay escrow│─▶│ USDC token │  │
+                                   │  │ contract      │  │ (SAC)      │  │
+                                   │  └───────────────┘  └────────────┘  │
+                                   └─────────────────────────────────────┘
 ```
 
-## Component Responsibilities
+### Escrow contract (`contracts/escrow`)
+The source of truth for every order. It holds the USDC, enforces the state machine and decides who may act and when. It has no admin key, so neither FarmPay nor anyone else can move funds outside the rules. Full specification: [contracts/escrow/README.md](../contracts/escrow/README.md).
 
-### Frontend (React + TypeScript)
-- User interface for buyers and farmers
-- Wallet connection and management
-- Order creation and tracking
-- Delivery profile display
-- Real-time status updates
+### Backend (`backend`)
+A thin, keyless layer between the app and the network:
+- **Builds** each action as a simulated, unsigned transaction. Simulation catches invalid actions before the user signs anything.
+- **Reads** orders straight from the contract.
+- **Relays** signed transactions, but only single calls to the configured escrow contract. It then waits for the result.
 
-### Backend API (Node.js + Express)
-- RESTful API endpoints
-- Business logic orchestration
-- Database operations
-- Stellar blockchain interactions
-- Authentication and authorization
+### Frontend (`frontend`)
+React app for the three roles: buyer, farmer and cooperative. It shows order state and sends each action to the user's wallet for signing.
 
-### Soroban Escrow Contract
-- Payment locking mechanism
-- Delivery confirmation logic
-- Dispute handling
-- Auto-release after dispute window
-- On-chain state management
+## Order lifecycle
 
-### Stellar Network
-- USDC payment rails
-- Transaction finality (5 seconds)
-- On-chain delivery history
-- Cross-border settlement
-- Low-cost transactions
+```
+Funded ──accept──▶ Accepted ──deliver──▶ Delivered ──confirm / claim──▶ Released
+  │                   │                     │
+  │ cancel            │ cancel (late)       └──dispute──▶ Disputed ──resolve──▶ Resolved
+  ▼                   ▼
+Refunded           Refunded
+```
 
-### PostgreSQL Database
-- Off-chain metadata storage
-- User profiles and preferences
-- Order details and crop information
-- Caching for performance
-- Search and filtering
+| Step | Who signs | What moves |
+|---|---|---|
+| Create | Buyer | USDC from the buyer to the contract |
+| Accept | Farmer | — |
+| Mark delivered | Farmer | — (the review window starts) |
+| Confirm | Buyer | USDC from the contract to the farmer |
+| Claim (after window) | Anyone | USDC from the contract to the farmer |
+| Dispute | Buyer | — |
+| Resolve | Cooperative | Split between the farmer and the buyer |
+| Cancel | Buyer | USDC from the contract back to the buyer |
 
-## Data Flow
+## Trust model
 
-### Order Creation Flow
-1. Buyer creates order in frontend
-2. Backend validates order details
-3. Backend calls Soroban contract to lock payment
-4. Contract transfers USDC to escrow
-5. Order stored in database with escrow reference
-6. Farmer notified of new order
+| Party | Can | Cannot |
+|---|---|---|
+| Buyer | Confirm, dispute within the window, cancel before acceptance or after a missed deadline | Take funds back once the farmer has delivered |
+| Farmer | Accept, mark delivered, claim after the window | Get paid without delivering (the buyer can dispute) |
+| Cooperative | Split the funds of a **disputed** order | Touch undisputed orders, or pay out more than the order amount |
+| FarmPay | Build and relay transactions | Sign for anyone, or move any funds |
 
-### Delivery Confirmation Flow
-1. Farmer delivers produce
-2. Buyer confirms delivery in frontend
-3. Backend calls Soroban contract to release payment
-4. Contract transfers USDC to farmer's wallet
-5. Transaction recorded on-chain
-6. Database updated with completion status
-7. Farmer's delivery profile updated
+The main trust assumption is the cooperative's judgement in disputes. Both parties see the arbiter's address before any money moves.
 
-### Delivery Profile Construction
-1. Query Stellar blockchain for farmer's transactions
-2. Filter completed escrow releases
-3. Aggregate delivery statistics
-4. Format for public display
-5. Cache in database for performance
+## Design decisions
 
-## Security Considerations
-
-### Smart Contract Security
-- Escrow funds held in contract, not controlled by any party
-- Time-locked dispute windows
-- Authorization checks on all state changes
-- Reentrancy protection
-- Overflow/underflow protection
-
-### API Security
-- JWT-based authentication
-- Rate limiting
-- Input validation and sanitization
-- CORS configuration
-- Environment variable protection
-
-### Wallet Security
-- Private keys never leave user's device
-- Transaction signing client-side
-- Secure wallet connection protocols
-- Clear transaction previews
-
-## Scalability
-
-### Current Design
-- Supports thousands of concurrent orders
-- Sub-second API response times
-- 5-second blockchain finality
-- Horizontal scaling via load balancing
-
-### Future Optimizations
-- Redis caching layer
-- GraphQL for flexible queries
-- WebSocket for real-time updates
-- CDN for static assets
-- Database read replicas
-
-## Technology Choices
-
-### Why Stellar?
-- Fast finality (3-5 seconds)
-- Low fees (~$0.0007/tx)
-- Native USDC support
-- Built-in DEX for currency conversion
-- Soroban smart contracts
-
-### Why React?
-- Component reusability
-- Large ecosystem
-- TypeScript support
-- Performance optimizations
-- Developer familiarity
-
-### Why Node.js?
-- JavaScript/TypeScript consistency
-- Stellar SDK support
-- Async I/O for blockchain calls
-- Large package ecosystem
-- Easy deployment
-
-### Why PostgreSQL?
-- ACID compliance
-- JSON support for flexible schemas
-- Full-text search
-- Mature and reliable
-- Strong TypeScript integration
+- **The review window starts at delivery, not at creation.** Otherwise auto-release could pay out before anything has been delivered.
+- **Disputes end in a split, not a winner-takes-all ruling.** Partial deliveries are the most common real dispute.
+- **One token per deployment.** The contract is deployed with USDC as its token, so it never has to choose or whitelist assets.
+- **There is no database yet.** Everything v1 needs is on-chain. A database will hold off-chain order details (crop, quantity, notes) and an event index for listing orders.
