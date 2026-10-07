@@ -1,179 +1,62 @@
 #!/bin/bash
+# FarmPay local setup: installs dependencies, deploys the escrow contract to
+# Stellar testnet with a test USDC token, and writes backend/.env.
+#
+# Creates funded testnet identities: fp-deployer, fp-issuer, fp-buyer, fp-farmer, fp-coop.
+# The buyer receives 5,000 test USDC. Safe to re-run.
 
-# FarmPay Setup Script
-# This script helps you set up the FarmPay development environment
+set -euo pipefail
+cd "$(dirname "$0")"
 
-set -e
-
-echo "🌾 FarmPay Setup Script"
-echo "======================="
-echo ""
-
-# Colors for output
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 RED='\033[0;31m'
-NC='\033[0m' # No Color
+NC='\033[0m'
+ok() { echo -e "${GREEN}✓${NC} $1"; }
+fail() { echo -e "${RED}✗${NC} $1"; exit 1; }
 
-# Check if command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
+echo "🌾 FarmPay setup"
+echo
 
-# Check prerequisites
-echo "Checking prerequisites..."
-echo ""
+command -v node >/dev/null || fail "Node.js 18+ is required: https://nodejs.org/"
+command -v cargo >/dev/null || fail "Rust is required: https://rustup.rs/"
+command -v stellar >/dev/null || fail "Stellar CLI is required: https://developers.stellar.org/docs/tools/cli"
+rustup target list --installed | grep -q wasm32v1-none || rustup target add wasm32v1-none
+ok "Prerequisites found"
 
-# Check Node.js
-if command_exists node; then
-    NODE_VERSION=$(node --version)
-    echo -e "${GREEN}✓${NC} Node.js ${NODE_VERSION} installed"
-else
-    echo -e "${RED}✗${NC} Node.js not found. Please install Node.js 18+ from https://nodejs.org/"
-    exit 1
-fi
+(cd frontend && npm install --no-audit --no-fund >/dev/null)
+(cd backend && npm install --no-audit --no-fund >/dev/null)
+ok "npm dependencies installed"
 
-# Check npm
-if command_exists npm; then
-    NPM_VERSION=$(npm --version)
-    echo -e "${GREEN}✓${NC} npm ${NPM_VERSION} installed"
-else
-    echo -e "${RED}✗${NC} npm not found"
-    exit 1
-fi
+(cd contracts/escrow && cargo test --quiet >/dev/null && stellar contract build >/dev/null 2>&1)
+ok "Contract tests pass and WASM built"
 
-# Check Rust
-if command_exists cargo; then
-    RUST_VERSION=$(rustc --version | cut -d' ' -f2)
-    echo -e "${GREEN}✓${NC} Rust ${RUST_VERSION} installed"
-else
-    echo -e "${YELLOW}!${NC} Rust not found. Install from https://rustup.rs/"
-    echo "   Required for Soroban smart contracts"
-fi
+for key in fp-deployer fp-issuer fp-buyer fp-farmer fp-coop; do
+  stellar keys address "$key" >/dev/null 2>&1 || stellar keys generate "$key" --network testnet --fund >/dev/null
+done
+ok "Testnet identities ready (stellar keys ls)"
 
-# Check PostgreSQL
-if command_exists psql; then
-    PSQL_VERSION=$(psql --version | cut -d' ' -f3)
-    echo -e "${GREEN}✓${NC} PostgreSQL ${PSQL_VERSION} installed"
-else
-    echo -e "${YELLOW}!${NC} PostgreSQL not found. Install from https://www.postgresql.org/"
-    echo "   Required for backend database"
-fi
+ASSET="USDC:$(stellar keys address fp-issuer)"
+for key in fp-buyer fp-farmer fp-coop; do
+  stellar tx new change-trust --source "$key" --line "$ASSET" --network testnet >/dev/null 2>&1
+done
+stellar tx new payment --source fp-issuer --destination "$(stellar keys address fp-buyer)" \
+  --asset "$ASSET" --amount 50000000000 --network testnet >/dev/null
+TOKEN=$(stellar contract asset deploy --asset "$ASSET" --source fp-deployer --network testnet 2>/dev/null \
+  || stellar contract id asset --asset "$ASSET" --network testnet)
+ok "Test USDC token: $TOKEN (buyer funded with 5,000 USDC)"
 
-# Check Soroban CLI
-if command_exists soroban; then
-    SOROBAN_VERSION=$(soroban --version | cut -d' ' -f2)
-    echo -e "${GREEN}✓${NC} Soroban CLI ${SOROBAN_VERSION} installed"
-else
-    echo -e "${YELLOW}!${NC} Soroban CLI not found"
-    read -p "   Install Soroban CLI now? (y/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "   Installing Soroban CLI..."
-        cargo install --locked soroban-cli
-        echo -e "${GREEN}✓${NC} Soroban CLI installed"
-    fi
-fi
+ESCROW=$(stellar contract deploy \
+  --wasm contracts/escrow/target/wasm32v1-none/release/farmpay_escrow.wasm \
+  --source fp-deployer --network testnet -- --token "$TOKEN" 2>/dev/null)
+ok "Escrow contract: $ESCROW"
 
-echo ""
-echo "Installing dependencies..."
-echo ""
+[ -f backend/.env ] || cp backend/.env.example backend/.env
+sed -i.bak "s/^ESCROW_CONTRACT_ID=.*/ESCROW_CONTRACT_ID=$ESCROW/" backend/.env && rm backend/.env.bak
+ok "backend/.env updated"
 
-# Install frontend dependencies
-echo "📦 Installing frontend dependencies..."
-cd frontend
-npm install
-cd ..
-echo -e "${GREEN}✓${NC} Frontend dependencies installed"
-
-# Install backend dependencies
-echo "📦 Installing backend dependencies..."
-cd backend
-npm install
-cd ..
-echo -e "${GREEN}✓${NC} Backend dependencies installed"
-
-echo ""
-echo "Setting up Stellar testnet..."
-echo ""
-
-# Check if testnet network exists
-if soroban network ls 2>/dev/null | grep -q "testnet"; then
-    echo -e "${GREEN}✓${NC} Testnet network already configured"
-else
-    echo "Adding testnet network..."
-    soroban network add testnet \
-        --rpc-url https://soroban-testnet.stellar.org \
-        --network-passphrase "Test SDF Network ; September 2015"
-    echo -e "${GREEN}✓${NC} Testnet network added"
-fi
-
-# Check if admin identity exists
-if soroban keys ls 2>/dev/null | grep -q "admin"; then
-    echo -e "${GREEN}✓${NC} Admin identity already exists"
-    ADMIN_ADDRESS=$(soroban keys address admin)
-    echo "   Address: ${ADMIN_ADDRESS}"
-else
-    echo "Generating admin identity..."
-    soroban keys generate admin --network testnet
-    ADMIN_ADDRESS=$(soroban keys address admin)
-    echo -e "${GREEN}✓${NC} Admin identity created"
-    echo "   Address: ${ADMIN_ADDRESS}"
-    echo ""
-    echo -e "${YELLOW}!${NC} Fund this account with testnet XLM:"
-    echo "   Visit: https://laboratory.stellar.org/#account-creator?network=test"
-    echo "   Or run: curl \"https://friendbot.stellar.org?addr=${ADMIN_ADDRESS}\""
-fi
-
-echo ""
-echo "Setting up environment files..."
-echo ""
-
-# Create backend .env if it doesn't exist
-if [ ! -f backend/.env ]; then
-    cp backend/.env.example backend/.env
-    echo -e "${GREEN}✓${NC} Created backend/.env"
-    echo -e "${YELLOW}!${NC} Please edit backend/.env with your configuration"
-else
-    echo -e "${GREEN}✓${NC} backend/.env already exists"
-fi
-
-echo ""
-echo "═══════════════════════════════════════════════════════════"
-echo -e "${GREEN}Setup Complete!${NC}"
-echo "═══════════════════════════════════════════════════════════"
-echo ""
-echo "Next steps:"
-echo ""
-echo "1. Fund your admin account with testnet XLM:"
-echo "   curl \"https://friendbot.stellar.org?addr=${ADMIN_ADDRESS}\""
-echo ""
-echo "2. Create PostgreSQL database:"
-echo "   createdb farmpay"
-echo ""
-echo "3. Build and deploy the Soroban contract:"
-echo "   cd contracts/escrow"
-echo "   cargo build --target wasm32-unknown-unknown --release"
-echo "   soroban contract deploy \\"
-echo "     --wasm target/wasm32-unknown-unknown/release/farmpay_escrow.wasm \\"
-echo "     --source admin \\"
-echo "     --network testnet"
-echo ""
-echo "4. Update backend/.env with:"
-echo "   - Database connection string"
-echo "   - Contract ID from step 3"
-echo "   - Admin secret key"
-echo ""
-echo "5. Start the backend:"
-echo "   cd backend"
-echo "   npm run dev"
-echo ""
-echo "6. Start the frontend (in a new terminal):"
-echo "   cd frontend"
-echo "   npm run dev"
-echo ""
-echo "7. Open http://localhost:3000 in your browser"
-echo ""
-echo "For detailed instructions, see docs/GETTING_STARTED.md"
-echo ""
-echo "🌾 Happy coding!"
+echo
+echo "Next:"
+echo "  cd backend && npm run dev      # API on http://localhost:4000"
+echo "  cd frontend && npm run dev     # app on http://localhost:3000"
+echo
+echo "Walk an order through the API: docs/GETTING_STARTED.md#try-the-flow"
