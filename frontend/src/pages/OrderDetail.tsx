@@ -1,10 +1,15 @@
+import PlannedPage from '../components/PlannedPage'
+
 export default function OrderDetail() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900">Order Details</h1>
-        <p className="text-gray-600 mt-2">Coming soon - View order status and confirm delivery</p>
-      </div>
-    </div>
+    <PlannedPage
+      title="Order"
+      description="One order's status, deadlines and the actions available to you."
+      actions={[
+        'See the order status and the time left in the review window',
+        'Take the next step for your role: accept, deliver, confirm, dispute, claim or cancel',
+        'As the cooperative, resolve a dispute by splitting the funds',
+      ]}
+    />
   )
 }

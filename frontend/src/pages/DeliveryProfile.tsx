@@ -1,10 +1,14 @@
+import PlannedPage from '../components/PlannedPage'
+
 export default function DeliveryProfile() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900">Farmer Delivery Profile</h1>
-        <p className="text-gray-600 mt-2">Coming soon - Public shareable delivery history</p>
-      </div>
-    </div>
+    <PlannedPage
+      title="Delivery History"
+      description="A farmer's completed orders, read from the escrow contract."
+      actions={[
+        'See every released and resolved order for this farmer',
+        'Share a link with new buyers as verifiable proof of delivery',
+      ]}
+    />
   )
 }

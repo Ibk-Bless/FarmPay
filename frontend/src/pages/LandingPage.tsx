@@ -34,10 +34,10 @@ export default function LandingPage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
         <div className="text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 text-balance">
-            Instant farm-to-buyer settlement on <span className="text-green-600">Stellar</span>
+            Guaranteed payment for farm deliveries on <span className="text-green-600">Stellar</span>
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto text-balance">
-            Because a farmer who delivers today shouldn't wait 60 days to get paid.
+            The buyer's USDC is locked in escrow before the farmer delivers — and released on confirmation, or automatically if the buyer goes quiet.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/order/create" className="bg-green-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-700 transition flex items-center justify-center">
@@ -53,16 +53,16 @@ export default function LandingPage() {
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20">
           <div className="text-center">
-            <div className="text-4xl font-bold text-green-600">5 seconds</div>
-            <div className="text-gray-600 mt-2">Payment finality on Stellar</div>
+            <div className="text-4xl font-bold text-green-600">100%</div>
+            <div className="text-gray-600 mt-2">Of every order pre-funded before delivery</div>
           </div>
           <div className="text-center">
-            <div className="text-4xl font-bold text-green-600">$0.0007</div>
-            <div className="text-gray-600 mt-2">Average transaction fee</div>
+            <div className="text-4xl font-bold text-green-600">72 hours</div>
+            <div className="text-gray-600 mt-2">Example review window before auto-release</div>
           </div>
           <div className="text-center">
-            <div className="text-4xl font-bold text-green-600">0 days</div>
-            <div className="text-gray-600 mt-2">Payment delay after delivery</div>
+            <div className="text-4xl font-bold text-green-600">0</div>
+            <div className="text-gray-600 mt-2">Funds held by FarmPay — the contract holds them</div>
           </div>
         </div>
       </section>
@@ -167,15 +167,15 @@ export default function LandingPage() {
                   </div>
                   <div className="flex items-center space-x-3">
                     <CheckCircle className="w-6 h-6 text-green-500" />
-                    <span className="text-gray-700"><strong>Delivery day:</strong> Farmer delivers produce</span>
+                    <span className="text-gray-700"><strong>Delivery day:</strong> Farmer delivers and marks the order delivered</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <CheckCircle className="w-6 h-6 text-green-500" />
-                    <span className="text-gray-700"><strong>5 seconds later:</strong> Buyer confirms, farmer is paid</span>
+                    <span className="text-gray-700"><strong>Within the review window:</strong> Buyer confirms — or stays silent — and the farmer is paid</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <CheckCircle className="w-6 h-6 text-green-500" />
-                    <span className="text-gray-700"><strong>Forever:</strong> Transaction recorded on-chain</span>
+                    <span className="text-gray-700"><strong>If there's a problem:</strong> The cooperative decides a fair split</span>
                   </div>
                 </div>
               </div>
@@ -184,10 +184,10 @@ export default function LandingPage() {
               <h3 className="text-2xl font-bold text-gray-900 mb-6">Payment isn't a promise — it's a guarantee</h3>
               <div className="space-y-4">
                 <p className="text-gray-700">
-                  The buyer locks payment in a Stellar escrow when creating the order. The farmer sees the funds are secured before accepting. On delivery confirmation, the escrow releases instantly.
+                  The buyer locks payment in a Stellar escrow when creating the order. The farmer sees the funds are secured before accepting. After delivery, the buyer has a fixed review window to confirm or dispute — if they do nothing, the farmer can claim the payment.
                 </p>
                 <p className="text-gray-700">
-                  No bank. No lawyer. No middleman. Just a programmable, neutral escrow that neither party controls — and both parties trust.
+                  Neither party can take the money back on their own. Disputes go to an arbiter both sides agreed to up front — the farmer's cooperative.
                 </p>
                 <p className="text-gray-700 font-semibold text-green-700">
                   The farmer delivers knowing they will be paid. The buyer pays knowing they will receive.
@@ -198,34 +198,34 @@ export default function LandingPage() {
 
           {/* Why Stellar */}
           <div className="bg-white rounded-xl shadow-lg p-8 md:p-12">
-            <h3 className="text-3xl font-bold text-gray-900 mb-8 text-center">Why This Only Works on Stellar</h3>
+            <h3 className="text-3xl font-bold text-gray-900 mb-8 text-center">Why Stellar</h3>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               <div className="text-center">
                 <Shield className="h-12 w-12 text-green-600 mx-auto mb-4" />
                 <h4 className="text-xl font-semibold text-gray-900 mb-2">Real Escrow</h4>
                 <p className="text-gray-600">
-                  Programmable, neutral account that releases only when delivery is confirmed. Not a spreadsheet — a guarantee.
+                  A Soroban contract enforces the rules. FarmPay never holds the funds and cannot move them.
                 </p>
               </div>
               <div className="text-center">
                 <Zap className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                <h4 className="text-xl font-semibold text-gray-900 mb-2">5-Second Finality</h4>
+                <h4 className="text-xl font-semibold text-gray-900 mb-2">Fast Settlement</h4>
                 <p className="text-gray-600">
-                  Farmer's wallet is funded the moment buyer taps confirm. Not next business day — right now.
+                  Once the escrow releases, the USDC lands in the farmer's wallet within seconds.
                 </p>
               </div>
               <div className="text-center">
                 <Globe className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                <h4 className="text-xl font-semibold text-gray-900 mb-2">Cross-Border USDC</h4>
+                <h4 className="text-xl font-semibold text-gray-900 mb-2">Stable USDC</h4>
                 <p className="text-gray-600">
-                  Stable dollar payments without forex volatility. A French buyer can pay a Ghanaian farmer seamlessly.
+                  Farmers are paid in a dollar-backed stablecoin, not a volatile token. Local cash-out via Stellar anchors is on the roadmap.
                 </p>
               </div>
               <div className="text-center">
                 <TrendingUp className="h-12 w-12 text-green-600 mx-auto mb-4" />
                 <h4 className="text-xl font-semibold text-gray-900 mb-2">Near-Zero Fees</h4>
                 <p className="text-gray-600">
-                  ~$0.0007 per transaction makes small orders viable. A $50 vegetable delivery is just as protected as $50,000 grain.
+                  Fractions of a cent per transaction make small orders viable. A $50 vegetable delivery is as protected as a $50,000 grain order.
                 </p>
               </div>
               <div className="text-center">
@@ -237,9 +237,9 @@ export default function LandingPage() {
               </div>
               <div className="text-center">
                 <Shield className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                <h4 className="text-xl font-semibold text-gray-900 mb-2">Credit Signal</h4>
+                <h4 className="text-xl font-semibold text-gray-900 mb-2">Fair Disputes</h4>
                 <p className="text-gray-600">
-                  Verified delivery records become the foundation for agricultural microfinance and input loans.
+                  A named arbiter can split the funds between farmer and buyer — no more payments stuck forever over a disagreement.
                 </p>
               </div>
             </div>
@@ -252,19 +252,18 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">How It Works</h2>
-            <p className="text-xl text-gray-600">Simple, transparent, instant</p>
+            <p className="text-xl text-gray-600">Simple, transparent, enforced by code</p>
           </div>
 
           <div className="max-w-4xl mx-auto">
             <div className="space-y-8">
               {[
-                { step: 1, title: 'Buyer Creates Purchase Order', desc: 'Specify crop, quantity, price, and delivery deadline' },
-                { step: 2, title: 'Buyer Locks Payment in Stellar Escrow', desc: 'Funds are secured in a programmable escrow account' },
-                { step: 3, title: 'Farmer Sees Locked Funds → Accepts Order', desc: 'Farmer knows payment is guaranteed before delivery' },
-                { step: 4, title: 'Farmer Delivers Produce', desc: 'Harvest delivered to buyer as agreed' },
-                { step: 5, title: 'Buyer Confirms Receipt', desc: 'Simple confirmation through the FarmPay app' },
-                { step: 6, title: 'Escrow Releases Instantly', desc: 'Farmer's wallet funded in 5 seconds' },
-                { step: 7, title: 'Transaction Added to On-Chain Profile', desc: 'Permanent, verifiable delivery record' },
+                { step: 1, title: 'Buyer Creates Order and Locks USDC', desc: 'Names the farmer, the cooperative as arbiter, the amount, and a delivery deadline' },
+                { step: 2, title: 'Farmer Sees Locked Funds → Accepts', desc: 'Until then, the buyer can cancel for a full refund' },
+                { step: 3, title: 'Farmer Delivers and Marks the Order Delivered', desc: 'This starts the review window (e.g. 72 hours)' },
+                { step: 4, title: 'Buyer Confirms → Farmer Is Paid', desc: 'If the buyer does nothing before the window closes, the farmer can claim the payment' },
+                { step: 5, title: 'Or: Buyer Opens a Dispute', desc: 'The cooperative decides how the funds are split between farmer and buyer' },
+                { step: 6, title: 'Outcome Recorded On-Chain', desc: "Each completed order adds to the farmer's verifiable delivery history" },
               ].map((item, idx) => (
                 <div key={idx} className="flex items-start space-x-6">
                   <div className="flex-shrink-0 w-12 h-12 bg-green-600 text-white rounded-full flex items-center justify-center text-xl font-bold">
@@ -287,7 +286,7 @@ export default function LandingPage() {
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">The Delivery History Farmers Actually Own</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Every completed transaction builds an on-chain delivery profile — a credit signal that travels with the farmer.
+              Every completed order builds an on-chain delivery profile that the farmer can show to new buyers.
             </p>
           </div>
 
@@ -307,7 +306,7 @@ export default function LandingPage() {
                   <CheckCircle className="h-6 w-6 text-green-500" />
                 </div>
                 <p className="text-sm text-gray-600">Delivery: March 2025</p>
-                <p className="text-sm font-semibold text-green-700">Payment: $1,840 USDC — released on delivery</p>
+                <p className="text-sm font-semibold text-green-700">Payment: $1,840 USDC — released on buyer confirmation</p>
               </div>
 
               <div className="border-l-4 border-green-500 pl-4">
@@ -319,13 +318,13 @@ export default function LandingPage() {
                   <CheckCircle className="h-6 w-6 text-green-500" />
                 </div>
                 <p className="text-sm text-gray-600">Delivery: August 2025</p>
-                <p className="text-sm font-semibold text-green-700">Payment: $2,100 USDC — released on delivery</p>
+                <p className="text-sm font-semibold text-green-700">Payment: $2,100 USDC — released after review window</p>
               </div>
             </div>
 
             <div className="mt-8 pt-6 border-t border-gray-200">
               <p className="text-gray-700 text-center">
-                <strong>This profile is shareable.</strong> Show it to lenders, new buyers, or cooperatives — it's an on-chain record nobody can alter.
+                <strong>This profile is shareable.</strong> Show it to new buyers or your cooperative — it's an on-chain record nobody can alter.
               </p>
             </div>
           </div>
@@ -342,14 +341,14 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
               { title: 'Purchase Order Creation', desc: 'Buyers create orders with crop details, quantity, price, and delivery deadline' },
-              { title: 'Escrow Locking', desc: 'Payment locked in Stellar escrow at order creation — visible to farmer before acceptance' },
+              { title: 'Escrow Locking', desc: 'USDC locked in a Soroban escrow at order creation — visible to the farmer before acceptance' },
               { title: 'Order Acceptance', desc: 'Farmers accept orders knowing funds are already secured' },
-              { title: 'Delivery Confirmation', desc: 'Buyer confirms receipt — triggers instant escrow release to farmer's wallet' },
-              { title: 'Dispute Window', desc: 'Short window for buyer to raise delivery dispute before auto-release' },
+              { title: 'Delivery Confirmation', desc: 'Buyer confirms receipt and the escrow pays the farmer' },
+              { title: 'Review Window & Auto-Release', desc: 'If the buyer stays silent, the farmer can claim payment once the window closes' },
               { title: 'Farmer Delivery Profile', desc: 'Public, shareable record of completed deliveries and payments' },
               { title: 'Buyer Dashboard', desc: 'Track all active and completed purchase orders' },
               { title: 'Farmer Dashboard', desc: 'Active orders, payment history, and delivery profile link' },
-              { title: 'Cross-Border Payments', desc: 'USDC on Stellar enables seamless international transactions' },
+              { title: 'Cooperative Arbitration', desc: 'Disputes are settled by the farmer\'s cooperative with a fair split' },
             ].map((feature, idx) => (
               <div key={idx} className="bg-green-50 p-6 rounded-lg border border-green-100">
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
@@ -371,22 +370,22 @@ export default function LandingPage() {
             <div className="text-center">
               <div className="text-5xl mb-4">👨‍🌾</div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Smallholder Farmers</h3>
-              <p className="text-gray-600">In Africa, Southeast Asia, and Latin America who sell to wholesalers or exporters</p>
+              <p className="text-gray-600">Selling through a cooperative to aggregators, processors, or exporters</p>
             </div>
             <div className="text-center">
               <div className="text-5xl mb-4">🏢</div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Agricultural Buyers</h3>
-              <p className="text-gray-600">Wholesalers, exporters, food processors wanting to formalize supplier relationships</p>
+              <p className="text-gray-600">Who already pay on delivery and want a verifiable, dispute-safe way to do it</p>
             </div>
             <div className="text-center">
               <div className="text-5xl mb-4">🤝</div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Cooperatives</h3>
-              <p className="text-gray-600">Looking to offer members a structured, transparent payment system</p>
+              <p className="text-gray-600">Onboard their members and act as the trusted arbiter for disputes</p>
             </div>
             <div className="text-center">
               <div className="text-5xl mb-4">🏦</div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Microfinance Institutions</h3>
-              <p className="text-gray-600">Seeking verified farmer track records for input loan decisions</p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Input Lenders (Future)</h3>
+              <p className="text-gray-600">Verified delivery histories could support input loans — a research item on our roadmap</p>
             </div>
           </div>
         </div>
@@ -396,10 +395,10 @@ export default function LandingPage() {
       <section className="py-20 bg-green-600">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl font-bold text-white mb-6">
-            Ready to end the 60-day wait?
+            Deliver against money, not promises.
           </h2>
           <p className="text-xl text-green-100 mb-8">
-            Join FarmPay and experience instant, guaranteed farm-to-buyer settlement.
+            FarmPay is in development on Stellar testnet. Try the flow and help us build it.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/order/create" className="bg-white text-green-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-50 transition">
@@ -422,7 +421,7 @@ export default function LandingPage() {
                 <span className="text-2xl font-bold text-white">FarmPay</span>
               </div>
               <p className="text-gray-400">
-                Instant farm-to-buyer settlement on Stellar.
+                Guaranteed payment for farm deliveries on Stellar.
               </p>
             </div>
             <div>
