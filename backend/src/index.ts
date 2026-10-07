@@ -1,36 +1,28 @@
 import express from 'express'
 import cors from 'cors'
-import dotenv from 'dotenv'
-
-dotenv.config()
+import { config } from './config.js'
+import { EscrowService } from './stellar/escrow.js'
+import { errorHandler, ordersRouter } from './routes/orders.js'
 
 const app = express()
-const PORT = process.env.PORT || 4000
 
-// Middleware
 app.use(cors())
 app.use(express.json())
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'FarmPay API is running' })
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', escrowContractId: config.escrowContractId || null })
 })
 
-// Routes (to be implemented)
-app.get('/api/orders', (req, res) => {
-  res.json({ message: 'Orders endpoint - coming soon' })
-})
+if (config.escrowContractId) {
+  const escrow = new EscrowService(config.rpcUrl, config.networkPassphrase, config.escrowContractId)
+  app.use('/api', ordersRouter(escrow))
+} else {
+  console.warn('ESCROW_CONTRACT_ID is not set; order endpoints are disabled. See docs/GETTING_STARTED.md.')
+}
 
-app.get('/api/farmers/:id', (req, res) => {
-  res.json({ message: 'Farmer profile endpoint - coming soon' })
-})
+app.use(errorHandler)
 
-app.get('/api/buyers/:id', (req, res) => {
-  res.json({ message: 'Buyer profile endpoint - coming soon' })
-})
-
-app.listen(PORT, () => {
-  console.log(`🌾 FarmPay API server running on port ${PORT}`)
-  console.log(`Environment: ${process.env.NODE_ENV}`)
-  console.log(`Stellar Network: ${process.env.STELLAR_NETWORK}`)
+app.listen(config.port, () => {
+  console.log(`🌾 FarmPay API listening on port ${config.port}`)
+  console.log(`Stellar RPC: ${config.rpcUrl}`)
 })
