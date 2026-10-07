@@ -1,244 +1,131 @@
-# Getting Started with FarmPay
-
-This guide will help you set up FarmPay locally for development.
+# Getting Started
 
 ## Prerequisites
 
-Before you begin, ensure you have the following installed:
+- [Node.js](https://nodejs.org/) 18+
+- [Rust](https://rustup.rs/) with the `wasm32v1-none` target (`rustup target add wasm32v1-none`)
+- [Stellar CLI](https://developers.stellar.org/docs/tools/cli)
 
-- **Node.js** 18 or higher ([Download](https://nodejs.org/))
-- **Rust** and Cargo ([Install](https://rustup.rs/))
-- **PostgreSQL** 14 or higher ([Download](https://www.postgresql.org/download/))
-- **Git** ([Download](https://git-scm.com/downloads))
-
-## Quick Start
-
-### 1. Clone the Repository
+## One-command setup
 
 ```bash
-git clone <repository-url>
-cd farmpay
+git clone https://github.com/Ibk-Bless/FarmPay.git
+cd FarmPay
+./setup.sh
 ```
 
-### 2. Install Soroban CLI
+`setup.sh` does the following:
+1. Installs the npm dependencies for `frontend/` and `backend/`
+2. Runs the contract tests and builds the WASM
+3. Creates funded testnet identities: `fp-deployer`, `fp-issuer`, `fp-buyer`, `fp-farmer` and `fp-coop`
+4. Issues a **test USDC** asset and gives the buyer 5,000 of it
+5. Deploys the escrow contract with that token
+6. Writes the contract ID to `backend/.env`
+
+Then start the app:
 
 ```bash
-cargo install --locked soroban-cli
+cd backend && npm run dev     # API on http://localhost:4000
+cd frontend && npm run dev    # app on http://localhost:3000
 ```
 
-### 3. Set Up Stellar Testnet
-
-```bash
-# Add testnet network
-soroban network add testnet \
-  --rpc-url https://soroban-testnet.stellar.org \
-  --network-passphrase "Test SDF Network ; September 2015"
-
-# Generate admin identity
-soroban keys generate admin --network testnet
-
-# Fund the account with testnet XLM
-# Visit: https://laboratory.stellar.org/#account-creator?network=test
-# Or use: soroban keys address admin | xargs -I {} curl "https://friendbot.stellar.org?addr={}"
-```
-
-### 4. Set Up Database
-
-```bash
-# Create database
-createdb farmpay
-
-# Or using psql
-psql -U postgres -c "CREATE DATABASE farmpay;"
-```
-
-### 5. Build and Deploy Escrow Contract
-
-```bash
-cd contracts/escrow
-
-# Build the contract
-cargo build --target wasm32-unknown-unknown --release
-
-# Deploy to testnet
-soroban contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/farmpay_escrow.wasm \
-  --source admin \
-  --network testnet
-
-# Save the contract ID that's returned
-```
-
-### 6. Set Up Backend
-
-```bash
-cd ../../backend
-
-# Install dependencies
-npm install
-
-# Create .env file
-cp .env.example .env
-
-# Edit .env and add:
-# - Your PostgreSQL connection string
-# - The contract ID from step 5
-# - Admin secret key from step 3
-nano .env
-
-# Start development server
-npm run dev
-```
-
-The backend should now be running on `http://localhost:4000`
-
-### 7. Set Up Frontend
-
-```bash
-cd ../frontend
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-The frontend should now be running on `http://localhost:3000`
-
-## Verify Installation
-
-### Test Backend
+Check the API:
 
 ```bash
 curl http://localhost:4000/api/health
+# {"status":"ok","escrowContractId":"C..."}
 ```
 
-Expected response:
-```json
-{
-  "status": "ok",
-  "message": "FarmPay API is running"
+## Try the flow
+
+The API returns unsigned transactions. In the app they will be signed by the user's wallet. From the command line, you can sign them with the Stellar CLI identities that `setup.sh` created:
+
+```bash
+API=http://localhost:4000/api
+BUYER=$(stellar keys address fp-buyer)
+FARMER=$(stellar keys address fp-farmer)
+COOP=$(stellar keys address fp-coop)
+
+# Sign the xdr from a build response with an identity and submit it.
+sign_submit() {
+  local signed
+  signed=$(jq -r .xdr | stellar tx sign --sign-with-key "$1" --network testnet)
+  curl -s -X POST $API/transactions -H 'content-type: application/json' -d "{\"signedXdr\":\"$signed\"}"
 }
+
+# 1. Buyer creates and funds an order
+curl -s -X POST $API/orders -H 'content-type: application/json' -d "{
+  \"buyer\":\"$BUYER\", \"farmer\":\"$FARMER\", \"arbiter\":\"$COOP\",
+  \"amount\":\"1840.50\", \"deliveryDeadline\":\"$(date -u -d '+7 days' +%FT%TZ)\",
+  \"reviewWindowHours\":72 }" | sign_submit fp-buyer
+# {"hash":"...","orderId":"1"}
+
+# 2. Farmer accepts, then marks the order delivered
+curl -s -X POST $API/orders/1/accept | sign_submit fp-farmer
+curl -s -X POST $API/orders/1/deliver | sign_submit fp-farmer
+
+# 3. Buyer confirms, and the farmer is paid
+curl -s -X POST $API/orders/1/confirm | sign_submit fp-buyer
+curl -s $API/orders/1
+# {"id":"1","status":"Released",...}
 ```
 
-### Test Frontend
+For a dispute, call `/orders/:id/dispute` with `{"reason":"..."}` signed by `fp-buyer`. Then call `/orders/:id/resolve` with `{"farmerAmount":"800"}` signed by `fp-coop`. Every endpoint is listed in [API.md](API.md).
 
-Open your browser and navigate to `http://localhost:3000`. You should see the FarmPay landing page.
+## Development workflow
 
-## Development Workflow
-
-### Making Changes to the Contract
+### Contract
 
 ```bash
 cd contracts/escrow
-
-# Make your changes to src/lib.rs
-
-# Rebuild
-cargo build --target wasm32-unknown-unknown --release
-
-# Redeploy
-soroban contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/farmpay_escrow.wasm \
-  --source admin \
-  --network testnet
-
-# Update the contract ID in backend/.env
+cargo test                # unit tests (src/test.rs)
+stellar contract build    # WASM in target/wasm32v1-none/release/
 ```
 
-### Making Changes to the Backend
+If you change the contract interface, re-run `./setup.sh` to deploy a fresh contract. It also updates `backend/.env`. Old orders stay on the previous contract.
 
-The backend uses `tsx watch` which automatically restarts on file changes. Just edit files in `backend/src/` and save.
-
-### Making Changes to the Frontend
-
-The frontend uses Vite's hot module replacement. Changes will appear instantly in your browser.
-
-## Project Structure
-
-```
-farmpay/
-├── contracts/escrow/       # Soroban smart contract
-│   ├── src/lib.rs         # Contract implementation
-│   └── Cargo.toml         # Rust dependencies
-├── backend/               # Node.js API server
-│   ├── src/
-│   │   ├── index.ts      # Server entry point
-│   │   └── stellar/      # Stellar integration
-│   └── package.json
-├── frontend/              # React web app
-│   ├── src/
-│   │   ├── pages/        # Page components
-│   │   ├── App.tsx       # Main app component
-│   │   └── main.tsx      # Entry point
-│   └── package.json
-└── docs/                  # Documentation
-```
-
-## Common Issues
-
-### Contract Deployment Fails
-
-**Error:** "Account not found"
-- **Solution:** Fund your admin account with testnet XLM using Friendbot
-
-**Error:** "Insufficient balance"
-- **Solution:** Request more testnet XLM from Friendbot
-
-### Backend Won't Start
-
-**Error:** "Cannot connect to database"
-- **Solution:** Ensure PostgreSQL is running and connection string is correct
-
-**Error:** "Contract ID not found"
-- **Solution:** Deploy the contract and update `ESCROW_CONTRACT_ID` in `.env`
-
-### Frontend Build Errors
-
-**Error:** "Module not found"
-- **Solution:** Run `npm install` in the frontend directory
-
-**Error:** "Cannot connect to backend"
-- **Solution:** Ensure backend is running on port 4000
-
-## Next Steps
-
-Now that you have FarmPay running locally:
-
-1. **Explore the Landing Page** - Navigate to `http://localhost:3000`
-2. **Review the Architecture** - Read `docs/ARCHITECTURE.md`
-3. **Implement Features** - Check the roadmap in `README.md`
-4. **Write Tests** - Add tests for contract and API endpoints
-5. **Deploy to Testnet** - Follow `docs/DEPLOYMENT.md`
-
-## Getting Help
-
-- **Documentation**: Check the `docs/` folder
-- **Issues**: Open an issue on GitHub
-- **Stellar Docs**: https://developers.stellar.org/
-- **Soroban Docs**: https://soroban.stellar.org/docs
-
-## Useful Commands
+### Backend
 
 ```bash
-# Backend
 cd backend
-npm run dev          # Start development server
-npm run build        # Build for production
-npm start            # Run production build
-
-# Frontend
-cd frontend
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-
-# Contract
-cd contracts/escrow
-cargo build --target wasm32-unknown-unknown --release  # Build
-cargo test                                              # Run tests
-soroban contract invoke --id <ID> -- <method>         # Call method
+npm run dev     # tsx watch, restarts on change
+npm run build   # type-check and compile to dist/
 ```
 
-Happy coding! 🌾
+### Frontend
+
+```bash
+cd frontend
+npm run dev     # Vite dev server; /api is proxied to localhost:4000
+npm run build   # type-check and production build
+```
+
+## Project structure
+
+```
+FarmPay/
+├── contracts/escrow/
+│   ├── src/lib.rs          # escrow contract
+│   ├── src/test.rs         # contract tests
+│   └── README.md           # contract specification
+├── backend/src/
+│   ├── index.ts            # Express app
+│   ├── config.ts           # environment
+│   ├── routes/orders.ts    # REST endpoints
+│   └── stellar/escrow.ts   # contract client: build, read, submit
+├── frontend/src/
+│   ├── pages/              # route components
+│   └── App.tsx             # routes
+├── docs/                   # architecture, API, deployment
+└── setup.sh                # testnet setup
+```
+
+## Common issues
+
+| Symptom | Fix |
+|---|---|
+| `ACCOUNT_NOT_FOUND` from the API | The signer's account isn't funded on testnet. Run `stellar keys fund <name> --network testnet` |
+| `order endpoints are disabled` on startup | `ESCROW_CONTRACT_ID` is empty in `backend/.env`. Run `./setup.sh` |
+| Transfer fails with a trustline error | The farmer or buyer has no trustline to the test USDC asset. Re-run `./setup.sh` |
+| `rustup target` errors when building | `rustup target add wasm32v1-none` |
+| Testnet was reset and the contract is gone | Testnet is wiped periodically. Re-run `./setup.sh` |

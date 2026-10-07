@@ -42,7 +42,7 @@ Thumbs.db
 
 # Rust/Soroban
 target/
-Cargo.lock
+test_snapshots/
 **/*.rs.bk
 
 # Database

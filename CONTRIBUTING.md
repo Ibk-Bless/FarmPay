@@ -39,19 +39,11 @@ Be respectful, inclusive, and professional. We're building technology to help fa
    - Follow existing code style
    - Add tests for new functionality
    - Update documentation
-4. **Test your changes**
+4. **Check your changes**
    ```bash
-   # Test contract
-   cd contracts/escrow
-   cargo test
-   
-   # Test backend
-   cd backend
-   npm test
-   
-   # Test frontend
-   cd frontend
-   npm test
+   cd contracts/escrow && cargo test    # contract
+   cd backend && npm run build          # backend type-check
+   cd frontend && npm run build         # frontend type-check + build
    ```
 5. **Commit with clear messages**
    ```bash
@@ -103,42 +95,21 @@ Use conventional commits:
 
 Examples:
 ```
-feat: add USDC balance check before order creation
-fix: resolve escrow release timing issue
-docs: update API documentation for dispute endpoint
+feat: add Freighter wallet connection
+fix: reject claim before review deadline in UI
+docs: document resolve endpoint body
 ```
 
 ## Testing
 
-### Contract Tests
-```bash
-cd contracts/escrow
-cargo test
-```
-
-### Backend Tests
-```bash
-cd backend
-npm test
-```
-
-### Frontend Tests
-```bash
-cd frontend
-npm test
-```
-
-### Integration Tests
-```bash
-npm run test:integration
-```
+- **Contract:** every change to `contracts/escrow/src/lib.rs` needs a test in `src/test.rs`. Run them with `cargo test`.
+- **Backend and frontend:** there is no test runner yet, and adding one is a welcome contribution. Until then, check API changes against testnet. [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md#try-the-flow) shows how.
 
 ## Documentation
 
-- Update README.md for user-facing changes
-- Update API.md for API changes
-- Update ARCHITECTURE.md for architectural changes
-- Add inline code comments for complex logic
+- Update `contracts/escrow/README.md` for any contract behaviour change, since it is the specification
+- Update `docs/API.md` for API changes
+- Update `docs/ARCHITECTURE.md` for architectural changes
 
 ## Review Process
 
@@ -148,19 +119,16 @@ npm run test:integration
 
 ## Areas We Need Help
 
-- **Smart Contract Development**: Soroban contract improvements
-- **Frontend Development**: UI/UX enhancements
-- **Backend Development**: API endpoints and integrations
-- **Testing**: Unit tests, integration tests, E2E tests
-- **Documentation**: Guides, tutorials, API docs
-- **Design**: UI mockups, user flows
-- **Localization**: Translations for different regions
+See the unchecked items in the [README roadmap](README.md#roadmap). The biggest open areas are:
+
+- **Frontend:** wallet connection and the buyer, farmer and cooperative screens
+- **Backend:** an event indexer for order listing and delivery history, and a test runner
+- **CI:** GitHub Actions for the contract, backend and frontend
+- **Design:** a mobile-first farmer experience
 
 ## Questions?
 
-- Open a Discussion on GitHub
-- Join our community chat
-- Email: [contact email]
+Open an issue or a GitHub Discussion.
 
 ## License
 
