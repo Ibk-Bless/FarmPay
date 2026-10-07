@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) 18+
+- [Node.js](https://nodejs.org/) 22+
 - [Rust](https://rustup.rs/) with the `wasm32v1-none` target (`rustup target add wasm32v1-none`)
 - [Stellar CLI](https://developers.stellar.org/docs/tools/cli)
 
@@ -36,9 +36,24 @@ curl http://localhost:4000/api/health
 # {"status":"ok","escrowContractId":"C..."}
 ```
 
-## Try the flow
+## Try it in the browser
 
-The API returns unsigned transactions. In the app they will be signed by the user's wallet. From the command line, you can sign them with the Stellar CLI identities that `setup.sh` created:
+1. Install the [Freighter](https://www.freighter.app/) extension and switch it to **Testnet**.
+2. Import the test accounts that `setup.sh` created. Print each secret key with:
+   ```bash
+   stellar keys secret fp-buyer    # also fp-farmer and fp-coop
+   ```
+   In Freighter, choose **Import a Stellar secret key** for each one. These are throwaway testnet keys. Never do this with a real account.
+3. Open http://localhost:3000 and connect Freighter as the buyer.
+4. **New order:** paste the farmer and cooperative addresses (`stellar keys address fp-farmer` and `fp-coop`) and sign. You land on the order page.
+5. Switch Freighter to the farmer account and reload. Accept, then mark the order delivered.
+6. Switch back to the buyer. Confirm delivery, or open a dispute and resolve it as `fp-coop`.
+
+Share the order page link with the other party. Each person only sees the actions their account is allowed to take.
+
+## Try the flow from the command line
+
+The API returns unsigned transactions. You can sign them with the Stellar CLI identities that `setup.sh` created:
 
 ```bash
 API=http://localhost:4000/api
@@ -114,7 +129,9 @@ FarmPay/
 │   ├── routes/orders.ts    # REST endpoints
 │   └── stellar/escrow.ts   # contract client: build, read, submit
 ├── frontend/src/
-│   ├── pages/              # route components
+│   ├── pages/              # route components (OrderCreation, OrderDetail, ...)
+│   ├── wallet/             # Freighter connection and the sign-and-submit hook
+│   ├── lib/api.ts          # typed backend client
 │   └── App.tsx             # routes
 ├── docs/                   # architecture, API, deployment
 └── setup.sh                # testnet setup

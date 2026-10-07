@@ -17,7 +17,7 @@ fail() { echo -e "${RED}✗${NC} $1"; exit 1; }
 echo "🌾 FarmPay setup"
 echo
 
-command -v node >/dev/null || fail "Node.js 18+ is required: https://nodejs.org/"
+command -v node >/dev/null || fail "Node.js 22+ is required: https://nodejs.org/"
 command -v cargo >/dev/null || fail "Rust is required: https://rustup.rs/"
 command -v stellar >/dev/null || fail "Stellar CLI is required: https://developers.stellar.org/docs/tools/cli"
 rustup target list --installed | grep -q wasm32v1-none || rustup target add wasm32v1-none
@@ -59,4 +59,4 @@ echo "Next:"
 echo "  cd backend && npm run dev      # API on http://localhost:4000"
 echo "  cd frontend && npm run dev     # app on http://localhost:3000"
 echo
-echo "Walk an order through the API: docs/GETTING_STARTED.md#try-the-flow"
+echo "Try it in the browser: docs/GETTING_STARTED.md#try-it-in-the-browser"
