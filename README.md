@@ -1,5 +1,7 @@
 # FarmPay 🌾
 
+[![CI](https://github.com/Ibk-Bless/FarmPay/actions/workflows/ci.yml/badge.svg)](https://github.com/Ibk-Bless/FarmPay/actions/workflows/ci.yml)
+
 **Guaranteed payment for farm deliveries on Stellar.** The buyer's USDC is locked in a Soroban escrow before the farmer delivers. It is released when the buyer confirms delivery, or automatically if the buyer stays silent past the review window.
 
 ## The Problem
@@ -96,7 +98,7 @@ farmpay/
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 22+
 - Rust with the `wasm32v1-none` target
 - [Stellar CLI](https://developers.stellar.org/docs/tools/cli)
 
@@ -115,7 +117,7 @@ cd backend && npm run dev     # API on :4000
 cd frontend && npm run dev    # app on :3000
 ```
 
-[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) walks a full order through the API from the command line.
+Open http://localhost:3000, connect [Freighter](https://www.freighter.app/) on Testnet, and create an order. [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md#try-it-in-the-browser) shows how to load the test accounts into Freighter.
 
 ## Roadmap
 
@@ -124,12 +126,12 @@ cd frontend && npm run dev    # app on :3000
 - [x] Contract test suite
 - [x] Keyless backend API covering every contract action
 - [x] One-command testnet setup with test USDC
-- [ ] CI for contract, backend and frontend
-- [ ] Wallet connection (Freighter) in the frontend
-- [ ] Buyer screens: create order, confirm or dispute
-- [ ] Farmer screens: accept, mark delivered, claim after window
-- [ ] Cooperative screen: resolve disputes
+- [x] CI for contract, backend and frontend
+- [x] Wallet connection (Freighter)
+- [x] Create order screen
+- [x] Order screen with every role's actions: accept, deliver, confirm, dispute, claim, cancel, resolve
 - [ ] Order listing and farmer delivery history (event indexer)
+- [ ] Buyer and farmer dashboards (needs the indexer)
 
 **v2: Real-world pilot**
 - [ ] SEP-24 anchor integration for local-currency cash-out
