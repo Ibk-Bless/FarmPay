@@ -39,11 +39,11 @@ Be respectful, inclusive, and professional. We're building technology to help fa
    - Follow existing code style
    - Add tests for new functionality
    - Update documentation
-4. **Check your changes**
+4. **Check your changes.** CI runs the same checks on every pull request.
    ```bash
-   cd contracts/escrow && cargo test    # contract
+   cd contracts/escrow && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
    cd backend && npm run build          # backend type-check
-   cd frontend && npm run build         # frontend type-check + build
+   cd frontend && npm run lint && npm run build
    ```
 5. **Commit with clear messages**
    ```bash
@@ -103,7 +103,7 @@ docs: document resolve endpoint body
 ## Testing
 
 - **Contract:** every change to `contracts/escrow/src/lib.rs` needs a test in `src/test.rs`. Run them with `cargo test`.
-- **Backend and frontend:** there is no test runner yet, and adding one is a welcome contribution. Until then, check API changes against testnet. [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md#try-the-flow) shows how.
+- **Backend and frontend:** there is no test runner yet, and adding one is a welcome contribution. Until then, check API changes against testnet. [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md#try-the-flow-from-the-command-line) shows how.
 
 ## Documentation
 
@@ -121,7 +121,7 @@ docs: document resolve endpoint body
 
 See the unchecked items in the [README roadmap](README.md#roadmap). The biggest open areas are:
 
-- **Frontend:** wallet connection and the buyer, farmer and cooperative screens
+- **Frontend:** buyer and farmer dashboards, mobile layout, and support for more wallets
 - **Backend:** an event indexer for order listing and delivery history, and a test runner
 - **CI:** GitHub Actions for the contract, backend and frontend
 - **Design:** a mobile-first farmer experience

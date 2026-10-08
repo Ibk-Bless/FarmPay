@@ -4,7 +4,7 @@ use super::*;
 use soroban_sdk::testutils::{Address as _, Ledger};
 use soroban_sdk::token::{StellarAssetClient, TokenClient};
 
-const AMOUNT: i128 = 1_000_0000000; // 1,000 USDC (7 decimals)
+const AMOUNT: i128 = 10_000_000_000; // 1,000 USDC (7 decimals)
 const DELIVERY_DEADLINE: u64 = 10_000;
 const REVIEW_WINDOW: u64 = 3 * 24 * 60 * 60;
 
@@ -33,7 +33,14 @@ fn setup<'a>() -> Setup<'a> {
     let client = FarmPayEscrowClient::new(&env, &contract_id);
     let token = TokenClient::new(&env, &usdc.address());
 
-    Setup { env, client, token, buyer, farmer, arbiter }
+    Setup {
+        env,
+        client,
+        token,
+        buyer,
+        farmer,
+        arbiter,
+    }
 }
 
 impl Setup<'_> {
@@ -84,11 +91,32 @@ fn create_order_validates_input() {
             .try_create_order(buyer, farmer, &s.arbiter, &amount, &deadline, &window)
     };
 
-    assert_eq!(create(&s.buyer, &s.farmer, 0, DELIVERY_DEADLINE, REVIEW_WINDOW), Err(Ok(Error::InvalidAmount)));
-    assert_eq!(create(&s.buyer, &s.buyer, AMOUNT, DELIVERY_DEADLINE, REVIEW_WINDOW), Err(Ok(Error::InvalidParties)));
-    assert_eq!(create(&s.buyer, &s.arbiter, AMOUNT, DELIVERY_DEADLINE, REVIEW_WINDOW), Err(Ok(Error::InvalidParties)));
-    assert_eq!(create(&s.buyer, &s.farmer, AMOUNT, 1_000, REVIEW_WINDOW), Err(Ok(Error::InvalidDeadline)));
-    assert_eq!(create(&s.buyer, &s.farmer, AMOUNT, DELIVERY_DEADLINE, 0), Err(Ok(Error::InvalidDeadline)));
+    assert_eq!(
+        create(&s.buyer, &s.farmer, 0, DELIVERY_DEADLINE, REVIEW_WINDOW),
+        Err(Ok(Error::InvalidAmount))
+    );
+    assert_eq!(
+        create(&s.buyer, &s.buyer, AMOUNT, DELIVERY_DEADLINE, REVIEW_WINDOW),
+        Err(Ok(Error::InvalidParties))
+    );
+    assert_eq!(
+        create(
+            &s.buyer,
+            &s.arbiter,
+            AMOUNT,
+            DELIVERY_DEADLINE,
+            REVIEW_WINDOW
+        ),
+        Err(Ok(Error::InvalidParties))
+    );
+    assert_eq!(
+        create(&s.buyer, &s.farmer, AMOUNT, 1_000, REVIEW_WINDOW),
+        Err(Ok(Error::InvalidDeadline))
+    );
+    assert_eq!(
+        create(&s.buyer, &s.farmer, AMOUNT, DELIVERY_DEADLINE, 0),
+        Err(Ok(Error::InvalidDeadline))
+    );
 }
 
 #[test]
@@ -137,7 +165,10 @@ fn buyer_cancels_before_acceptance() {
     assert_eq!(s.last_signer(), s.buyer);
     assert_eq!(s.status(id), OrderStatus::Refunded);
     assert_eq!(s.token.balance(&s.buyer), AMOUNT);
-    assert_eq!(s.client.try_accept_order(&id), Err(Ok(Error::InvalidStatus)));
+    assert_eq!(
+        s.client.try_accept_order(&id),
+        Err(Ok(Error::InvalidStatus))
+    );
 }
 
 #[test]
@@ -159,7 +190,10 @@ fn buyer_cancels_accepted_order_only_after_delivery_deadline() {
 fn cannot_cancel_after_delivery() {
     let s = setup();
     let id = s.delivered();
-    assert_eq!(s.client.try_cancel_order(&id), Err(Ok(Error::InvalidStatus)));
+    assert_eq!(
+        s.client.try_cancel_order(&id),
+        Err(Ok(Error::InvalidStatus))
+    );
 }
 
 #[test]
@@ -167,11 +201,18 @@ fn dispute_resolved_with_split() {
     let s = setup();
     let id = s.delivered();
 
-    s.client.open_dispute(&id, &String::from_str(&s.env, "Short by 200kg"));
+    s.client
+        .open_dispute(&id, &String::from_str(&s.env, "Short by 200kg"));
     assert_eq!(s.last_signer(), s.buyer);
     assert_eq!(s.status(id), OrderStatus::Disputed);
-    assert_eq!(s.client.try_claim_payment(&id), Err(Ok(Error::InvalidStatus)));
-    assert_eq!(s.client.try_confirm_delivery(&id), Err(Ok(Error::InvalidStatus)));
+    assert_eq!(
+        s.client.try_claim_payment(&id),
+        Err(Ok(Error::InvalidStatus))
+    );
+    assert_eq!(
+        s.client.try_confirm_delivery(&id),
+        Err(Ok(Error::InvalidStatus))
+    );
 
     let farmer_share = AMOUNT * 8 / 10;
     s.client.resolve_dispute(&id, &farmer_share);
@@ -186,7 +227,8 @@ fn dispute_resolved_with_split() {
 fn dispute_resolution_allows_full_refund() {
     let s = setup();
     let id = s.delivered();
-    s.client.open_dispute(&id, &String::from_str(&s.env, "Nothing arrived"));
+    s.client
+        .open_dispute(&id, &String::from_str(&s.env, "Nothing arrived"));
 
     s.client.resolve_dispute(&id, &0);
     assert_eq!(s.token.balance(&s.buyer), AMOUNT);
@@ -197,10 +239,17 @@ fn dispute_resolution_allows_full_refund() {
 fn dispute_split_is_bounded() {
     let s = setup();
     let id = s.delivered();
-    s.client.open_dispute(&id, &String::from_str(&s.env, "Wrong grade"));
+    s.client
+        .open_dispute(&id, &String::from_str(&s.env, "Wrong grade"));
 
-    assert_eq!(s.client.try_resolve_dispute(&id, &-1), Err(Ok(Error::InvalidSplit)));
-    assert_eq!(s.client.try_resolve_dispute(&id, &(AMOUNT + 1)), Err(Ok(Error::InvalidSplit)));
+    assert_eq!(
+        s.client.try_resolve_dispute(&id, &-1),
+        Err(Ok(Error::InvalidSplit))
+    );
+    assert_eq!(
+        s.client.try_resolve_dispute(&id, &(AMOUNT + 1)),
+        Err(Ok(Error::InvalidSplit))
+    );
 }
 
 #[test]
@@ -211,7 +260,8 @@ fn dispute_must_be_within_review_window() {
 
     s.env.ledger().set_timestamp(deadline + 1);
     assert_eq!(
-        s.client.try_open_dispute(&id, &String::from_str(&s.env, "Too late")),
+        s.client
+            .try_open_dispute(&id, &String::from_str(&s.env, "Too late")),
         Err(Ok(Error::TooLate))
     );
 }
@@ -221,13 +271,23 @@ fn state_transitions_are_enforced() {
     let s = setup();
     let id = s.create();
 
-    assert_eq!(s.client.try_mark_delivered(&id), Err(Ok(Error::InvalidStatus)));
-    assert_eq!(s.client.try_confirm_delivery(&id), Err(Ok(Error::InvalidStatus)));
     assert_eq!(
-        s.client.try_open_dispute(&id, &String::from_str(&s.env, "x")),
+        s.client.try_mark_delivered(&id),
         Err(Ok(Error::InvalidStatus))
     );
-    assert_eq!(s.client.try_resolve_dispute(&id, &0), Err(Ok(Error::InvalidStatus)));
+    assert_eq!(
+        s.client.try_confirm_delivery(&id),
+        Err(Ok(Error::InvalidStatus))
+    );
+    assert_eq!(
+        s.client
+            .try_open_dispute(&id, &String::from_str(&s.env, "x")),
+        Err(Ok(Error::InvalidStatus))
+    );
+    assert_eq!(
+        s.client.try_resolve_dispute(&id, &0),
+        Err(Ok(Error::InvalidStatus))
+    );
     assert_eq!(s.client.try_get_order(&99), Err(Ok(Error::OrderNotFound)));
 }
 

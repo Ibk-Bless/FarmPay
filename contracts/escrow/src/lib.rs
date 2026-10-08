@@ -116,7 +116,7 @@ impl FarmPayEscrow {
         let id: u64 = env.storage().instance().get(&DataKey::NextId).unwrap();
         env.storage().instance().set(&DataKey::NextId, &(id + 1));
 
-        token_client(&env).transfer(&buyer, &env.current_contract_address(), &amount);
+        token_client(&env).transfer(&buyer, env.current_contract_address(), &amount);
 
         let order = Order {
             id,
@@ -282,7 +282,11 @@ fn expect_status(order: &Order, status: OrderStatus) -> Result<(), Error> {
 }
 
 fn release_to_farmer(env: &Env, order: &mut Order) {
-    token_client(env).transfer(&env.current_contract_address(), &order.farmer, &order.amount);
+    token_client(env).transfer(
+        &env.current_contract_address(),
+        &order.farmer,
+        &order.amount,
+    );
     order.status = OrderStatus::Released;
     save(env, order);
 }
