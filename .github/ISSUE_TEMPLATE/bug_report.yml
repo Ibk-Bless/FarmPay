@@ -1,0 +1,52 @@
+name: Bug report
+description: Something in the contract, API or app doesn't behave as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! For **security issues** (e.g. a way to move escrowed funds), do not open an issue — see [SECURITY.md](https://github.com/Ibk-Bless/FarmPay/blob/main/SECURITY.md).
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Contract (contracts/escrow)
+        - Backend API (backend)
+        - Web app (frontend)
+        - Setup / docs
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Include the error code or message if there was one.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      description: Link the part of the spec or docs that describes the expected behaviour, if any.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run ./setup.sh
+        2. Create an order with ...
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: details
+    attributes:
+      label: Order id, transaction hash or contract id (if relevant)
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: OS, Node version, browser, Freighter version

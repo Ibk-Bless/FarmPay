@@ -4,28 +4,21 @@ Thank you for your interest in contributing to FarmPay! This document provides g
 
 ## Code of Conduct
 
-Be respectful, inclusive, and professional. We're building technology to help farmers — let's keep that mission at the center of everything we do.
+Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## How to Contribute
 
-### Reporting Bugs
+### Picking an issue
 
-1. Check if the bug has already been reported in Issues
-2. If not, create a new issue with:
-   - Clear title and description
-   - Steps to reproduce
-   - Expected vs actual behavior
-   - Screenshots if applicable
-   - Environment details (OS, Node version, etc.)
+1. Browse issues labelled [`good first issue`](https://github.com/Ibk-Bless/FarmPay/labels/good%20first%20issue) (small, well-defined) or [`help wanted`](https://github.com/Ibk-Bless/FarmPay/labels/help%20wanted) (larger pieces of the roadmap). The `area:` labels show which part of the code an issue touches.
+2. Comment on the issue to say you're taking it, and wait to be assigned before starting, so two people don't build the same thing.
+3. If you can't continue, say so in the issue so it can be reassigned. Issues with no update for 7 days may be unassigned.
 
-### Suggesting Features
+Every issue lists acceptance criteria. A pull request is ready to merge when it meets them and CI passes.
 
-1. Check if the feature has been suggested in Issues
-2. Create a new issue with:
-   - Clear use case
-   - Expected behavior
-   - Why this benefits farmers or buyers
-   - Potential implementation approach
+### Reporting bugs and suggesting features
+
+Use the [issue templates](https://github.com/Ibk-Bless/FarmPay/issues/new/choose). For security problems, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
 
 ### Pull Requests
 
@@ -128,7 +121,7 @@ See the unchecked items in the [README roadmap](README.md#roadmap). The biggest 
 
 ## Questions?
 
-Open an issue or a GitHub Discussion.
+Ask in the related issue, or open a new one.
 
 ## License
 
