@@ -113,7 +113,10 @@ npm run build   # type-check and compile to dist/
 cd frontend
 npm run dev     # Vite dev server; /api is proxied to localhost:4000
 npm run build   # type-check and production build
+npm run test:e2e   # browser tests with a fake wallet and mocked API
 ```
+
+The first time, install the test browser with `npx playwright install chromium`.
 
 ## Project structure
 
