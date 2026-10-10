@@ -36,7 +36,7 @@ Use the [issue templates](https://github.com/Ibk-Bless/FarmPay/issues/new/choose
    ```bash
    cd contracts/escrow && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
    cd backend && npm run build          # backend type-check
-   cd frontend && npm run lint && npm run build
+   cd frontend && npm run lint && npm run build && npm run test:e2e
    ```
 5. **Commit with clear messages**
    ```bash
@@ -96,7 +96,8 @@ docs: document resolve endpoint body
 ## Testing
 
 - **Contract:** every change to `contracts/escrow/src/lib.rs` needs a test in `src/test.rs`. Run them with `cargo test`.
-- **Backend and frontend:** there is no test runner yet, and adding one is a welcome contribution. Until then, check API changes against testnet. [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md#try-the-flow-from-the-command-line) shows how.
+- **Frontend:** end-to-end tests in `frontend/e2e` run the app in a real browser with a fake Freighter wallet and a mocked API, so they need no backend or testnet. Run them with `npm run test:e2e` (first time: `npx playwright install chromium`). UI changes should come with a test.
+- **Backend:** there is no test runner yet ([#10](https://github.com/Ibk-Bless/FarmPay/issues/10)). Until then, check API changes against testnet. [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md#try-the-flow-from-the-command-line) shows how.
 
 ## Documentation
 
