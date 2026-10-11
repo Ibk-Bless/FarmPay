@@ -1,6 +1,7 @@
 #![cfg(test)]
 
 use super::*;
+use soroban_sdk::testutils::storage::{Instance as _, Persistent as _};
 use soroban_sdk::testutils::{Address as _, Ledger};
 use soroban_sdk::token::{StellarAssetClient, TokenClient};
 
@@ -306,4 +307,142 @@ fn accept_requires_farmer_auth() {
     let id = s.create();
     s.env.set_auths(&[]);
     s.client.accept_order(&id);
+}
+
+// ---------- Storage lifetime (TTL) ----------
+
+const DAY: u64 = 24 * 60 * 60;
+
+fn ledgers(seconds: u64) -> u32 {
+    (seconds / SECONDS_PER_LEDGER) as u32
+}
+
+impl Setup<'_> {
+    fn stored_order_ttl(&self, id: u64) -> u32 {
+        self.env.as_contract(&self.client.address, || {
+            self.env.storage().persistent().get_ttl(&DataKey::Order(id))
+        })
+    }
+
+    fn instance_ttl(&self) -> u32 {
+        self.env.as_contract(&self.client.address, || {
+            self.env.storage().instance().get_ttl()
+        })
+    }
+
+    fn ttl_for(&self, order: &Order) -> u32 {
+        self.env
+            .as_contract(&self.client.address, || order_ttl(&self.env, order))
+    }
+
+    fn order_with(&self, status: OrderStatus, delivery_in: u64, review_window: u64) -> Order {
+        let now = self.env.ledger().timestamp();
+        Order {
+            id: 1,
+            buyer: self.buyer.clone(),
+            farmer: self.farmer.clone(),
+            arbiter: self.arbiter.clone(),
+            amount: AMOUNT,
+            delivery_deadline: now + delivery_in,
+            review_window,
+            review_deadline: if status == OrderStatus::Delivered {
+                now + review_window
+            } else {
+                0
+            },
+            status,
+        }
+    }
+}
+
+#[test]
+fn open_order_lives_until_delivery_and_review_plus_buffer() {
+    let s = setup();
+    for status in [OrderStatus::Funded, OrderStatus::Accepted] {
+        let order = s.order_with(status, 120 * DAY, 3 * DAY);
+        assert_eq!(s.ttl_for(&order), ledgers(123 * DAY) + ORDER_TTL_BUFFER);
+    }
+}
+
+#[test]
+fn delivered_order_lives_until_review_deadline_plus_buffer() {
+    let s = setup();
+    let order = s.order_with(OrderStatus::Delivered, 0, 60 * DAY);
+    assert_eq!(s.ttl_for(&order), ledgers(60 * DAY) + ORDER_TTL_BUFFER);
+}
+
+#[test]
+fn short_lived_disputed_and_finished_orders_get_the_minimum() {
+    let s = setup();
+    let soon = s.order_with(OrderStatus::Funded, DAY, DAY);
+    assert_eq!(s.ttl_for(&soon), ORDER_MIN_TTL);
+    for status in [
+        OrderStatus::Disputed,
+        OrderStatus::Released,
+        OrderStatus::Refunded,
+        OrderStatus::Resolved,
+    ] {
+        let order = s.order_with(status, 120 * DAY, 3 * DAY);
+        assert_eq!(s.ttl_for(&order), ORDER_MIN_TTL);
+    }
+}
+
+#[test]
+fn order_ttl_is_capped_at_the_network_maximum() {
+    let s = setup();
+    s.env.ledger().set_max_entry_ttl(100 * DAY_IN_LEDGERS);
+    let order = s.order_with(OrderStatus::Funded, 300 * DAY, 3 * DAY);
+    let max = s
+        .env
+        .as_contract(&s.client.address, || s.env.storage().max_ttl());
+    assert_eq!(s.ttl_for(&order), max);
+}
+
+#[test]
+fn create_order_stores_the_lifecycle_ttl() {
+    let s = setup();
+    let deadline = s.env.ledger().timestamp() + 120 * DAY;
+    let id = s.client.create_order(
+        &s.buyer,
+        &s.farmer,
+        &s.arbiter,
+        &AMOUNT,
+        &deadline,
+        &REVIEW_WINDOW,
+    );
+    assert_eq!(
+        s.stored_order_ttl(id),
+        ledgers(120 * DAY + REVIEW_WINDOW) + ORDER_TTL_BUFFER
+    );
+}
+
+#[test]
+fn contract_instance_is_extended_after_long_inactivity() {
+    let s = setup();
+    assert_eq!(s.instance_ttl(), INSTANCE_TTL_EXTEND_TO);
+
+    // A long-dated order, so it is still live after the idle period.
+    let deadline = s.env.ledger().timestamp() + 120 * DAY;
+    let id = s.client.create_order(
+        &s.buyer,
+        &s.farmer,
+        &s.arbiter,
+        &AMOUNT,
+        &deadline,
+        &REVIEW_WINDOW,
+    );
+
+    // 65 idle days: the instance drops below the 30-day threshold...
+    let seq = s.env.ledger().sequence();
+    s.env
+        .ledger()
+        .set_sequence_number(seq + 65 * DAY_IN_LEDGERS);
+    assert_eq!(
+        s.instance_ttl(),
+        INSTANCE_TTL_EXTEND_TO - 65 * DAY_IN_LEDGERS
+    );
+
+    // ...and the next state change brings it back to 90 days.
+    s.client.accept_order(&id);
+    assert_eq!(s.instance_ttl(), INSTANCE_TTL_EXTEND_TO);
 }
