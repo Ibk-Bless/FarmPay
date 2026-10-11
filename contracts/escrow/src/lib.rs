@@ -11,10 +11,18 @@ use soroban_sdk::{
 #[cfg(test)]
 mod test;
 
-// Persistent entries live ~30 days without activity and are bumped on every write.
+// Storage lifetimes (TTL), in ledgers. Ledgers close roughly every 5 seconds;
+// converting time to ledgers at 5s slightly over-estimates, which errs on the
+// side of keeping data live. Every TTL is capped at the network's maximum.
+const SECONDS_PER_LEDGER: u64 = 5;
 const DAY_IN_LEDGERS: u32 = 17_280;
-const ORDER_TTL_THRESHOLD: u32 = 7 * DAY_IN_LEDGERS;
-const ORDER_TTL_EXTEND_TO: u32 = 30 * DAY_IN_LEDGERS;
+/// The contract instance and code are extended to 90 days whenever they drop below 30.
+const INSTANCE_TTL_THRESHOLD: u32 = 30 * DAY_IN_LEDGERS;
+const INSTANCE_TTL_EXTEND_TO: u32 = 90 * DAY_IN_LEDGERS;
+/// An order always stays live at least this long after its last update.
+const ORDER_MIN_TTL: u32 = 30 * DAY_IN_LEDGERS;
+/// Extra time after an order's next deadline, so the next party can still act.
+const ORDER_TTL_BUFFER: u32 = 14 * DAY_IN_LEDGERS;
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -89,6 +97,7 @@ impl FarmPayEscrow {
     pub fn __constructor(env: Env, token: Address) {
         env.storage().instance().set(&DataKey::Token, &token);
         env.storage().instance().set(&DataKey::NextId, &1u64);
+        extend_instance(&env);
     }
 
     /// Buyer creates an order and moves `amount` of the escrow token into the contract.
@@ -263,14 +272,44 @@ fn load(env: &Env, order_id: u64) -> Result<Order, Error> {
 fn save(env: &Env, order: &Order) {
     let key = DataKey::Order(order.id);
     env.storage().persistent().set(&key, order);
-    env.storage()
-        .persistent()
-        .extend_ttl(&key, ORDER_TTL_THRESHOLD, ORDER_TTL_EXTEND_TO);
+    let ttl = order_ttl(env, order);
+    env.storage().persistent().extend_ttl(&key, ttl, ttl);
+    extend_instance(env);
     StatusChanged {
         order_id: order.id,
         status: order.status,
     }
     .publish(env);
+}
+
+/// How long an order must stay live: until its next deadline has passed plus a
+/// buffer for the next party to act, and never less than `ORDER_MIN_TTL`.
+fn order_ttl(env: &Env, order: &Order) -> u32 {
+    let now = env.ledger().timestamp();
+    let next_deadline = match order.status {
+        // The farmer may deliver up to the deadline, then the review window runs.
+        OrderStatus::Funded | OrderStatus::Accepted => {
+            order.delivery_deadline.saturating_add(order.review_window)
+        }
+        OrderStatus::Delivered => order.review_deadline,
+        // Disputes have no deadline; terminal orders are kept for history reads.
+        _ => now,
+    };
+    let ledgers = next_deadline.saturating_sub(now) / SECONDS_PER_LEDGER;
+    let ttl = u32::try_from(ledgers)
+        .unwrap_or(u32::MAX)
+        .saturating_add(ORDER_TTL_BUFFER)
+        .max(ORDER_MIN_TTL);
+    ttl.min(env.storage().max_ttl())
+}
+
+/// Keeps the contract instance and code live, so the contract stays callable.
+fn extend_instance(env: &Env) {
+    let max = env.storage().max_ttl();
+    let extend_to = INSTANCE_TTL_EXTEND_TO.min(max);
+    env.storage()
+        .instance()
+        .extend_ttl(INSTANCE_TTL_THRESHOLD.min(extend_to), extend_to);
 }
 
 fn expect_status(order: &Order, status: OrderStatus) -> Result<(), Error> {

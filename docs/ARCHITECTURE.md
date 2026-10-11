@@ -69,5 +69,6 @@ The main trust assumption is the cooperative's judgement in disputes. Both parti
 
 - **The review window starts at delivery, not at creation.** Otherwise auto-release could pay out before anything has been delivered.
 - **Disputes end in a split, not a winner-takes-all ruling.** Partial deliveries are the most common real dispute.
+- **Storage lives as long as the order.** Each order's TTL is set from its next deadline, and the contract instance is topped up on every state change, so neither is archived while someone still needs to act. See [Storage lifetime](../contracts/escrow/README.md#storage-lifetime).
 - **One token per deployment.** The contract is deployed with USDC as its token, so it never has to choose or whitelist assets.
 - **There is no database yet.** Everything v1 needs is on-chain. A database will hold off-chain order details (crop, quantity, notes) and an event index for listing orders.

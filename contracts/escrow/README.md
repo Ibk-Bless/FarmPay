@@ -45,7 +45,20 @@ pub struct Order {
 }
 ```
 
-The contract is deployed with a single token address (USDC) set in the constructor. Orders are kept in persistent storage, and their TTL is extended on every write.
+The contract is deployed with a single token address (USDC) set in the constructor.
+
+### Storage lifetime
+
+Soroban archives storage entries whose time-to-live (TTL) runs out. The contract keeps everything live for as long as it is needed, so no order is archived in the middle of its lifecycle:
+
+| Entry | Kept live until | When it's extended |
+|---|---|---|
+| Contract instance and code | At least 30 days ahead, topped up to 90 days | Construction and every state change |
+| `Funded` / `Accepted` order | Delivery deadline + review window + 14 days | Every write to the order |
+| `Delivered` order | Review deadline + 14 days | Every write to the order |
+| `Disputed` and finished orders | 30 days after the last update | Every write to the order |
+
+Time is converted to ledgers at 5 seconds per ledger, which slightly over-estimates and keeps data live a little longer. Every TTL is capped at the network's maximum entry TTL. An order whose deadlines are further out than that maximum can still expire, but archived entries are not lost: they can be restored with a `RestoreFootprint` operation.
 
 ## Methods
 
@@ -105,7 +118,7 @@ stellar contract build
 cargo test
 ```
 
-The tests in `src/test.rs` cover the happy path, auto-release, both cancellation paths, dispute splits (including bounds), window timing, invalid transitions and authorization.
+The tests in `src/test.rs` cover the happy path, auto-release, both cancellation paths, dispute splits (including bounds), window timing, invalid transitions, authorization and storage lifetimes.
 
 ## Deployment (testnet)
 
