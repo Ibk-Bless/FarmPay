@@ -274,52 +274,51 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Delivery Profile Section */}
-      <section className="py-20 bg-gradient-to-b from-green-50 to-white">
+      {/* Live testnet proof */}
+      <section id="testnet-proof" className="py-20 bg-gradient-to-b from-green-50 to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">The Delivery History Farmers Actually Own</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Don't take our word for it</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Every completed order builds an on-chain delivery profile that the farmer can show to new buyers.
+              These two orders ran through the real escrow contract on Stellar testnet. Every step is on-chain, and you can check it yourself.
             </p>
           </div>
 
           <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-8 border-2 border-green-100">
-            <div className="border-b-2 border-gray-200 pb-4 mb-6">
-              <h3 className="text-2xl font-bold text-gray-900">Farmer: Amara Diallo</h3>
-              <p className="text-gray-600">Verified on Stellar · 2 completed orders · 100% on-time delivery</p>
-            </div>
-            
             <div className="space-y-6">
               <div className="border-l-4 border-green-500 pl-4">
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <h4 className="font-semibold text-gray-900">Cashew — 2,000kg</h4>
-                    <p className="text-sm text-gray-600">West Africa Exports Ltd</p>
+                    <h4 className="font-semibold text-gray-900">Order #1 — 125.50 USDC</h4>
+                    <p className="text-sm text-gray-600">Funded → accepted → delivered → confirmed by the buyer</p>
                   </div>
                   <CheckCircle className="h-6 w-6 text-green-500" />
                 </div>
-                <p className="text-sm text-gray-600">Delivery: March 2025</p>
-                <p className="text-sm font-semibold text-green-700">Payment: $1,840 USDC — released on buyer confirmation</p>
+                <p className="text-sm font-semibold text-green-700">Released: the farmer received the full 125.50 USDC</p>
               </div>
 
-              <div className="border-l-4 border-green-500 pl-4">
+              <div className="border-l-4 border-amber-500 pl-4">
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <h4 className="font-semibold text-gray-900">Maize — 5,000kg</h4>
-                    <p className="text-sm text-gray-600">NutriFood Processing Co.</p>
+                    <h4 className="font-semibold text-gray-900">Order #2 — 300 USDC</h4>
+                    <p className="text-sm text-gray-600">Funded → accepted → delivered → disputed by the buyer</p>
                   </div>
-                  <CheckCircle className="h-6 w-6 text-green-500" />
+                  <CheckCircle className="h-6 w-6 text-amber-500" />
                 </div>
-                <p className="text-sm text-gray-600">Delivery: August 2025</p>
-                <p className="text-sm font-semibold text-green-700">Payment: $2,100 USDC — released after review window</p>
+                <p className="text-sm font-semibold text-amber-700">Resolved by the cooperative: 200 USDC to the farmer, 100 USDC refunded to the buyer</p>
               </div>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <p className="text-gray-700 text-center">
-                <strong>This profile is shareable.</strong> Show it to new buyers or your cooperative — it's an on-chain record nobody can alter.
-              </p>
+            <div className="mt-8 pt-6 border-t border-gray-200 text-center">
+              <a
+                href="https://stellar.expert/explorer/testnet/contract/CBEZZ7PQPDQWRMZUSBI3CPB55RDPLIUF2D4NLMFKXKQO4CNAOG34OGKS"
+                target="_blank"
+                rel="noreferrer"
+                className="text-green-700 font-semibold hover:underline"
+              >
+                View the contract on stellar.expert →
+              </a>
+              <p className="text-sm text-gray-500 mt-2">Test accounts and test USDC only. No real funds.</p>
             </div>
           </div>
         </div>
@@ -398,9 +397,14 @@ export default function LandingPage() {
             <Link to="/order/create" className="bg-white text-green-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-50 transition">
               Create Your First Order
             </Link>
-            <Link to="/farmer/dashboard" className="border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-700 transition">
-              View Farmer Dashboard
-            </Link>
+            <a
+              href="https://github.com/Ibk-Bless/FarmPay"
+              target="_blank"
+              rel="noreferrer"
+              className="border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-700 transition"
+            >
+              Contribute on GitHub
+            </a>
           </div>
         </div>
       </section>

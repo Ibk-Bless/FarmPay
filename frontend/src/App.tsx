@@ -5,6 +5,7 @@ import FarmerDashboard from './pages/FarmerDashboard'
 import OrderCreation from './pages/OrderCreation'
 import OrderDetail from './pages/OrderDetail'
 import DeliveryProfile from './pages/DeliveryProfile'
+import NotFound from './pages/NotFound'
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
       <Route path="/order/create" element={<OrderCreation />} />
       <Route path="/order/:orderId" element={<OrderDetail />} />
       <Route path="/farmer/:farmerId/profile" element={<DeliveryProfile />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }
