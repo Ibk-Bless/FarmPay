@@ -116,9 +116,10 @@ Response:
 
 | HTTP | Code | Cause |
 |---|---|---|
-| 400 | `MISSING_FIELD`, `INVALID_ADDRESS`, `INVALID_AMOUNT`, `INVALID_DEADLINE`, `INVALID_ORDER_ID`, `INVALID_PARTIES`, `INVALID_SPLIT`, `INVALID_TRANSACTION` | Bad input |
+| 400 | `MISSING_FIELD`, `INVALID_JSON`, `INVALID_ADDRESS`, `INVALID_AMOUNT`, `INVALID_DEADLINE`, `INVALID_ORDER_ID`, `INVALID_PARTIES`, `INVALID_SPLIT`, `INVALID_TRANSACTION` | Bad input, including a request body that is not valid JSON |
 | 403 | `UNAUTHORIZED` | The signer isn't allowed to perform this action |
-| 404 | `ORDER_NOT_FOUND`, `ACCOUNT_NOT_FOUND`, `NOT_FOUND` | Unknown order, unfunded account or unknown action |
+| 404 | `ORDER_NOT_FOUND`, `ACCOUNT_NOT_FOUND`, `NOT_FOUND` | Unknown order, unfunded account, or an unknown path or action. Unknown `/api` paths return this JSON format, not an HTML page |
+| 413 | `PAYLOAD_TOO_LARGE` | Request body over 100 KB |
 | 409 | `INVALID_STATUS`, `TOO_EARLY`, `TOO_LATE` | Action not allowed in the order's current state or at the current time |
 | 502 | `SIMULATION_FAILED`, `SUBMIT_FAILED`, `TRANSACTION_FAILED` | Network or RPC failure |
 

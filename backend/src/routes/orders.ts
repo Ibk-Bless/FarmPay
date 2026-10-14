@@ -95,15 +95,6 @@ export function ordersRouter(escrow: EscrowService): Router {
   return router
 }
 
-export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
-  if (err instanceof EscrowError) {
-    res.status(err.status).json({ error: { code: err.code, message: err.message } })
-    return
-  }
-  console.error(err)
-  res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Unexpected server error' } })
-}
-
 function handle(fn: (req: Request, res: Response) => Promise<void>) {
   return (req: Request, res: Response, next: NextFunction) => {
     fn(req, res).catch(next)
