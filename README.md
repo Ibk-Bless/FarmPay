@@ -42,7 +42,7 @@ Refunded           Refunded
 
 Every order and its outcome is recorded on-chain, which gives each farmer a verifiable delivery history.
 
-The full contract specification is in [contracts/escrow/README.md](contracts/escrow/README.md).
+See [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) for diagrams and a "what if…?" guide, and [contracts/escrow/README.md](contracts/escrow/README.md) for the full contract specification.
 
 ## Why Stellar
 
@@ -72,6 +72,7 @@ We list these openly because they shape what we build next:
 
 - **Buyers have to pre-fund the order.** That's a real cost for the buyer. FarmPay is aimed first at buyers who already pay cash on delivery, such as aggregators and processors buying through cooperatives. It isn't yet aimed at buyers who rely on supplier credit.
 - **The arbiter is trusted.** A dishonest cooperative could rule unfairly. The arbiter's address is fixed when the order is created, so both parties agree to it up front.
+- **A dispute with an unresponsive arbiter locks the funds.** A disputed order has no timeout today, so if the cooperative disappears the order cannot complete. A default outcome after a deadline is planned ([#29](https://github.com/Ibk-Bless/FarmPay/issues/29)).
 - **Farmers need a Stellar wallet.** In v1 we assume the cooperative helps members set one up. Mobile-money cash-out comes with anchor integration.
 
 ## Tech Stack

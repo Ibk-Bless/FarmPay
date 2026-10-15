@@ -76,6 +76,10 @@ Time is converted to ledgers at 5 seconds per ledger, which slightly over-estima
 | `get_order(id) -> Order` | — | any | Read-only |
 | `token() -> Address` | — | any | Read-only: the escrow token |
 
+### Known limitation
+
+`Disputed` has no deadline: the only way out is `resolve_dispute`, signed by the arbiter. If the arbiter never acts (or loses its key), the order's funds stay locked. A default outcome after a deadline is planned ([#29](https://github.com/Ibk-Bless/FarmPay/issues/29)).
+
 ### Validation rules
 - `amount > 0`. Buyer, farmer and arbiter must be three distinct addresses.
 - `delivery_deadline` must be in the future at creation.
