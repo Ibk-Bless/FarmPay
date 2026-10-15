@@ -1,28 +1,27 @@
-import express from 'express'
-import cors from 'cors'
+import { createApp } from './app.js'
 import { config } from './config.js'
 import { EscrowService } from './stellar/escrow.js'
-import { errorHandler, ordersRouter } from './routes/orders.js'
 
-const app = express()
+const escrow = config.escrowContractId
+  ? new EscrowService(config.rpcUrl, config.networkPassphrase, config.escrowContractId)
+  : undefined
 
-app.use(cors())
-app.use(express.json())
-
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', escrowContractId: config.escrowContractId || null })
-})
-
-if (config.escrowContractId) {
-  const escrow = new EscrowService(config.rpcUrl, config.networkPassphrase, config.escrowContractId)
-  app.use('/api', ordersRouter(escrow))
-} else {
+if (!escrow) {
   console.warn('ESCROW_CONTRACT_ID is not set; order endpoints are disabled. See docs/GETTING_STARTED.md.')
 }
 
-app.use(errorHandler)
+const app = createApp({ escrow, escrowContractId: config.escrowContractId })
 
-app.listen(config.port, () => {
+const server = app.listen(config.port, () => {
   console.log(`🌾 FarmPay API listening on port ${config.port}`)
   console.log(`Stellar RPC: ${config.rpcUrl}`)
 })
+
+// Finish in-flight requests (a transaction may be mid-submit) before exiting.
+function shutdown(signal: string) {
+  console.log(`${signal} received, shutting down`)
+  server.close(() => process.exit(0))
+  setTimeout(() => process.exit(1), 10_000).unref()
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))

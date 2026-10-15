@@ -42,6 +42,8 @@ Environment variables:
 | `STELLAR_NETWORK_PASSPHRASE` | testnet passphrase | Network the transactions are built for |
 | `ESCROW_CONTRACT_ID` | — | Deployed escrow contract (required for order endpoints) |
 
+On `SIGTERM` or `SIGINT` the server stops accepting connections and finishes in-flight requests (up to 10 seconds) before exiting, so a deploy does not cut a transaction off mid-submit.
+
 The backend holds no secret keys. It builds unsigned transactions and relays signed ones. It only accepts transactions that make a single call to `ESCROW_CONTRACT_ID`.
 
 ## Frontend
