@@ -41,6 +41,20 @@ Environment variables:
 | `STELLAR_RPC_URL` | `https://soroban-testnet.stellar.org` | Soroban RPC endpoint |
 | `STELLAR_NETWORK_PASSPHRASE` | testnet passphrase | Network the transactions are built for |
 | `ESCROW_CONTRACT_ID` | — | Deployed escrow contract (required for order endpoints) |
+| `CORS_ORIGIN` | — (any origin) | Comma-separated browser origins allowed to call the API, e.g. `https://farmpay.example`. **Set this when deploying.** The server warns at startup if it is empty |
+| `LOG_REQUESTS` | `true` | One JSON log line per request; `false` silences it |
+
+### Logs and request ids
+
+Every response carries an `X-Request-Id` header, and each request writes one JSON line when it finishes:
+
+```json
+{"time":"2026-10-20T07:16:26.575Z","requestId":"7c36a0fc-…","method":"POST","path":"/api/orders/1/accept","status":409,"ms":812.4}
+```
+
+Ask users to quote the `X-Request-Id` from a failed request, and search the logs for it. Request bodies and query strings are never logged, and `/api/health` is skipped so health checks don't flood the log. Unexpected `500` errors are logged with the same id.
+
+CORS only controls which websites a *browser* will let read the API's responses; it doesn't stop other clients such as `curl`. Rate limiting is tracked separately in [#12](https://github.com/Ibk-Bless/FarmPay/issues/12).
 
 On `SIGTERM` or `SIGINT` the server stops accepting connections and finishes in-flight requests (up to 10 seconds) before exiting, so a deploy does not cut a transaction off mid-submit.
 

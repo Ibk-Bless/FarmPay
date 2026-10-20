@@ -11,6 +11,10 @@ The API never holds user keys. Every write follows the same two steps:
 
 The order id is the id assigned by the escrow contract. Amounts are decimal strings in USDC, with up to 7 decimal places.
 
+## Request ids
+
+Every response includes an `X-Request-Id` header (also exposed to browsers through CORS). Quote it when reporting a problem so the matching server log line can be found.
+
 ## Endpoints
 
 ### Health

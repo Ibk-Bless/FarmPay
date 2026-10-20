@@ -10,7 +10,16 @@ if (!escrow) {
   console.warn('ESCROW_CONTRACT_ID is not set; order endpoints are disabled. See docs/GETTING_STARTED.md.')
 }
 
-const app = createApp({ escrow, escrowContractId: config.escrowContractId })
+const app = createApp({
+  escrow,
+  escrowContractId: config.escrowContractId,
+  corsOrigins: config.corsOrigins,
+  logRequests: config.logRequests,
+})
+
+if (config.corsOrigins.length === 0) {
+  console.warn('CORS_ORIGIN is not set; any website can call this API. Set it before deploying.')
+}
 
 const server = app.listen(config.port, () => {
   console.log(`🌾 FarmPay API listening on port ${config.port}`)
