@@ -69,7 +69,13 @@ export default function OrderDetail() {
   if (loadError) {
     return (
       <Shell>
-        <p className="text-red-700 bg-red-50 border border-red-200 rounded-lg p-4">{loadError}</p>
+        <p role="alert" className="text-red-700 bg-red-50 border border-red-200 rounded-lg p-4">{loadError}</p>
+        <button
+          onClick={load}
+          className="mt-4 border-2 border-gray-300 text-gray-700 px-5 py-2.5 rounded-lg font-semibold hover:bg-gray-50 transition"
+        >
+          Try again
+        </button>
       </Shell>
     )
   }
