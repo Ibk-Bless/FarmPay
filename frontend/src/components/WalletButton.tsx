@@ -8,7 +8,7 @@ export default function WalletButton() {
   const [error, setError] = useState<string | null>(null)
 
   if (status === 'loading') {
-    return <span className="text-sm text-gray-400">Checking wallet…</span>
+    return <span className="text-sm text-gray-500">Checking wallet…</span>
   }
 
   if (status === 'not-installed') {
@@ -30,7 +30,7 @@ export default function WalletButton() {
       <div className="flex flex-col items-end">
         <button
           onClick={() => connect().then(() => setError(null), (err: Error) => setError(err.message))}
-          className="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+          className="inline-flex items-center gap-2 bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800 transition"
         >
           <Wallet className="h-4 w-4" />
           Connect wallet

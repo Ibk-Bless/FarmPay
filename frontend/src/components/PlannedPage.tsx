@@ -11,7 +11,7 @@ export default function PlannedPage({ title, description, actions }: PlannedPage
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <Link to="/" className="text-green-600 hover:text-green-700 text-sm">← FarmPay</Link>
+        <Link to="/" className="text-green-700 hover:text-green-800 text-sm">← FarmPay</Link>
         <h1 className="text-3xl font-bold text-gray-900 mt-4">{title}</h1>
         <p className="text-gray-600 mt-2">{description}</p>
         <div className="mt-6 bg-white border border-gray-200 rounded-lg p-6">
@@ -22,7 +22,7 @@ export default function PlannedPage({ title, description, actions }: PlannedPage
         </div>
         <p className="text-sm text-gray-500 mt-6">
           Not built yet. The API behind it already works on testnet. Want to build it? See the{' '}
-          <a href="https://github.com/Ibk-Bless/FarmPay#roadmap" className="text-green-600 hover:underline">roadmap</a>.
+          <a href="https://github.com/Ibk-Bless/FarmPay#roadmap" className="text-green-700 underline hover:text-green-800">roadmap</a>.
         </p>
       </div>
     </div>

@@ -14,10 +14,10 @@ export default function LandingPage() {
               <span className="text-2xl font-bold text-green-700">FarmPay</span>
             </div>
             <div className="hidden md:flex space-x-8">
-              <a href="#problem" className="text-gray-700 hover:text-green-600">The Problem</a>
-              <a href="#solution" className="text-gray-700 hover:text-green-600">Solution</a>
-              <a href="#how-it-works" className="text-gray-700 hover:text-green-600">How It Works</a>
-              <a href="#features" className="text-gray-700 hover:text-green-600">Features</a>
+              <a href="#problem" className="text-gray-700 hover:text-green-700">The Problem</a>
+              <a href="#solution" className="text-gray-700 hover:text-green-700">Solution</a>
+              <a href="#how-it-works" className="text-gray-700 hover:text-green-700">How It Works</a>
+              <a href="#features" className="text-gray-700 hover:text-green-700">Features</a>
             </div>
             <WalletButton />
           </div>
@@ -28,17 +28,17 @@ export default function LandingPage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
         <div className="text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 text-balance">
-            Guaranteed payment for farm deliveries on <span className="text-green-600">Stellar</span>
+            Guaranteed payment for farm deliveries on <span className="text-green-700">Stellar</span>
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto text-balance">
             The buyer's USDC is locked in escrow before the farmer delivers — and released on confirmation, or automatically if the buyer goes quiet.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/order/create" className="bg-green-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-700 transition flex items-center justify-center">
+            <Link to="/order/create" className="bg-green-700 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-800 transition flex items-center justify-center">
               Create Purchase Order
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
-            <a href="#how-it-works" className="border-2 border-green-600 text-green-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-50 transition">
+            <a href="#how-it-works" className="border-2 border-green-600 text-green-700 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-50 transition">
               See How It Works
             </a>
           </div>
@@ -47,15 +47,15 @@ export default function LandingPage() {
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20">
           <div className="text-center">
-            <div className="text-4xl font-bold text-green-600">100%</div>
+            <div className="text-4xl font-bold text-green-700">100%</div>
             <div className="text-gray-600 mt-2">Of every order pre-funded before delivery</div>
           </div>
           <div className="text-center">
-            <div className="text-4xl font-bold text-green-600">72 hours</div>
+            <div className="text-4xl font-bold text-green-700">72 hours</div>
             <div className="text-gray-600 mt-2">Example review window before auto-release</div>
           </div>
           <div className="text-center">
-            <div className="text-4xl font-bold text-green-600">0</div>
+            <div className="text-4xl font-bold text-green-700">0</div>
             <div className="text-gray-600 mt-2">Funds held by FarmPay — the contract holds them</div>
           </div>
         </div>
@@ -195,42 +195,42 @@ export default function LandingPage() {
             <h3 className="text-3xl font-bold text-gray-900 mb-8 text-center">Why Stellar</h3>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               <div className="text-center">
-                <Shield className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                <Shield className="h-12 w-12 text-green-700 mx-auto mb-4" />
                 <h4 className="text-xl font-semibold text-gray-900 mb-2">Real Escrow</h4>
                 <p className="text-gray-600">
                   A Soroban contract enforces the rules. FarmPay never holds the funds and cannot move them.
                 </p>
               </div>
               <div className="text-center">
-                <Zap className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                <Zap className="h-12 w-12 text-green-700 mx-auto mb-4" />
                 <h4 className="text-xl font-semibold text-gray-900 mb-2">Fast Settlement</h4>
                 <p className="text-gray-600">
                   Once the escrow releases, the USDC lands in the farmer's wallet within seconds.
                 </p>
               </div>
               <div className="text-center">
-                <Globe className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                <Globe className="h-12 w-12 text-green-700 mx-auto mb-4" />
                 <h4 className="text-xl font-semibold text-gray-900 mb-2">Stable USDC</h4>
                 <p className="text-gray-600">
                   Farmers are paid in a dollar-backed stablecoin, not a volatile token. Local cash-out via Stellar anchors is on the roadmap.
                 </p>
               </div>
               <div className="text-center">
-                <TrendingUp className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                <TrendingUp className="h-12 w-12 text-green-700 mx-auto mb-4" />
                 <h4 className="text-xl font-semibold text-gray-900 mb-2">Near-Zero Fees</h4>
                 <p className="text-gray-600">
                   Fractions of a cent per transaction make small orders viable. A $50 vegetable delivery is as protected as a $50,000 grain order.
                 </p>
               </div>
               <div className="text-center">
-                <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                <CheckCircle className="h-12 w-12 text-green-700 mx-auto mb-4" />
                 <h4 className="text-xl font-semibold text-gray-900 mb-2">Permanent Records</h4>
                 <p className="text-gray-600">
                   On-chain delivery history farmers own. Can't be deleted, travels with them to every new buyer relationship.
                 </p>
               </div>
               <div className="text-center">
-                <Shield className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                <Shield className="h-12 w-12 text-green-700 mx-auto mb-4" />
                 <h4 className="text-xl font-semibold text-gray-900 mb-2">Fair Disputes</h4>
                 <p className="text-gray-600">
                   A named arbiter can split the funds between farmer and buyer — no more payments stuck forever over a disagreement.
@@ -260,7 +260,7 @@ export default function LandingPage() {
                 { step: 6, title: 'Outcome Recorded On-Chain', desc: "Each completed order adds to the farmer's verifiable delivery history" },
               ].map((item, idx) => (
                 <div key={idx} className="flex items-start space-x-6">
-                  <div className="flex-shrink-0 w-12 h-12 bg-green-600 text-white rounded-full flex items-center justify-center text-xl font-bold">
+                  <div className="flex-shrink-0 w-12 h-12 bg-green-700 text-white rounded-full flex items-center justify-center text-xl font-bold">
                     {item.step}
                   </div>
                   <div className="flex-1 pt-2">
@@ -385,23 +385,23 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-green-600">
+      <section className="py-20 bg-green-700">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl font-bold text-white mb-6">
             Deliver against money, not promises.
           </h2>
-          <p className="text-xl text-green-100 mb-8">
+          <p className="text-xl text-green-50 mb-8">
             FarmPay is in development on Stellar testnet. Try the flow and help us build it.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/order/create" className="bg-white text-green-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-50 transition">
+            <Link to="/order/create" className="bg-white text-green-700 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-50 transition">
               Create Your First Order
             </Link>
             <a
               href="https://github.com/Ibk-Bless/FarmPay"
               target="_blank"
               rel="noreferrer"
-              className="border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-700 transition"
+              className="border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-800 transition"
             >
               Contribute on GitHub
             </a>

@@ -11,7 +11,7 @@ export default function AppHeader() {
           <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-0.5 rounded">testnet</span>
         </Link>
         <div className="flex items-center gap-6">
-          <Link to="/order/create" className="hidden sm:inline text-gray-700 hover:text-green-600">
+          <Link to="/order/create" className="hidden sm:inline text-gray-700 hover:text-green-700">
             New order
           </Link>
           <WalletButton />

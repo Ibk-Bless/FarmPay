@@ -145,7 +145,7 @@ export default function OrderCreation() {
             )}
 
             <button type="submit" disabled={busy || wrongNetwork}
-              className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+              className="w-full bg-green-700 text-white py-3 rounded-lg font-semibold hover:bg-green-800 transition disabled:opacity-50 disabled:cursor-not-allowed">
               {busy ? STEP_LABELS[step] : 'Lock funds and create order'}
             </button>
           </form>

@@ -10,7 +10,7 @@ export default function NotFound() {
         <h1 className="text-3xl font-bold text-gray-900">Page not found</h1>
         <p className="text-gray-600 mt-2">The page you're looking for doesn't exist or has moved.</p>
         <div className="mt-8 flex justify-center gap-4">
-          <Link to="/" className="bg-green-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-green-700 transition">
+          <Link to="/" className="bg-green-700 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-green-800 transition">
             Back to home
           </Link>
           <Link to="/order/create" className="border-2 border-gray-300 text-gray-700 px-5 py-2.5 rounded-lg font-semibold hover:bg-gray-50 transition">
