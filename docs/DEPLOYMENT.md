@@ -69,3 +69,9 @@ npm run build
 ```
 
 Serve `frontend/dist/` from any static host. Route `/api` to the backend, either through a reverse proxy or your host's rewrite rules.
+
+**Order matters.** Single-page apps usually need a catch-all rule that serves `index.html` for unknown paths. Put the `/api` rule *before* that catch-all, or `/api/*` will return the app's HTML instead of JSON. The app handles this without crashing, showing "The FarmPay server sent an unexpected response", but nothing will work until the rule order is fixed. You can check with:
+
+```bash
+curl -s https://your-site.example/api/health   # should print {"status":"ok",...}, not HTML
+```

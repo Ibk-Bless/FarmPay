@@ -51,13 +51,33 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, {
-    ...init,
-    headers: { 'content-type': 'application/json', ...init?.headers },
-  })
-  const body = await res.json().catch(() => ({}))
+  let res: Response
+  try {
+    res = await fetch(`/api${path}`, {
+      ...init,
+      headers: { 'content-type': 'application/json', ...init?.headers },
+    })
+  } catch {
+    throw new ApiError('NETWORK', 'Could not reach the FarmPay server')
+  }
+
+  // The body may be empty or not JSON at all (a proxy error page, or a host that serves
+  // index.html for unknown paths), so never assume it parses.
+  const text = await res.text()
+  let body: unknown
+  try {
+    body = JSON.parse(text)
+  } catch {
+    body = undefined
+  }
+  const error = (body as { error?: { code?: string; message?: string } } | undefined)?.error
+
   if (!res.ok) {
-    throw new ApiError(body.error?.code ?? 'HTTP_ERROR', body.error?.message ?? `Request failed (${res.status})`)
+    if (error?.code) throw new ApiError(error.code, error.message ?? error.code)
+    throw new ApiError(res.status >= 500 ? 'SERVER_ERROR' : 'HTTP_ERROR', `Request failed (${res.status})`)
+  }
+  if (body === undefined || body === null || typeof body !== 'object') {
+    throw new ApiError('BAD_RESPONSE', 'The server sent an unexpected response')
   }
   return body as T
 }
@@ -80,6 +100,9 @@ export const api = {
 
 // User-facing messages for the API's error codes.
 const MESSAGES: Record<string, string> = {
+  NETWORK: "Can't reach the FarmPay server. Check your connection and try again.",
+  SERVER_ERROR: 'The FarmPay server had a problem. Please try again in a moment.',
+  BAD_RESPONSE: 'The FarmPay server sent an unexpected response. Please try again, or contact the people running this site.',
   INVALID_STATUS: 'This action is not available for the order in its current state.',
   TOO_EARLY: 'Too early: the deadline for this action has not passed yet.',
   TOO_LATE: 'Too late: the review window has closed.',

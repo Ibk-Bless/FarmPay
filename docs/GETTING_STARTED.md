@@ -148,4 +148,6 @@ FarmPay/
 | `order endpoints are disabled` on startup | `ESCROW_CONTRACT_ID` is empty in `backend/.env`. Run `./setup.sh` |
 | Transfer fails with a trustline error | The farmer or buyer has no trustline to the test USDC asset. Re-run `./setup.sh` |
 | `rustup target` errors when building | `rustup target add wasm32v1-none` |
+| "Can't reach the FarmPay server" in the app | The backend isn't running, or the frontend isn't proxying `/api` to it. Start it with `cd backend && npm run dev` and check `curl localhost:4000/api/health` |
+| "The FarmPay server sent an unexpected response" | `/api` is returning HTML, not JSON. In production, put the `/api` rule before the single-page-app catch-all (see [DEPLOYMENT.md](DEPLOYMENT.md)) |
 | Testnet was reset and the contract is gone | Testnet is wiped periodically. Re-run `./setup.sh` |
