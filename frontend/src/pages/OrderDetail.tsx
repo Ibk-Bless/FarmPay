@@ -124,7 +124,7 @@ export default function OrderDetail() {
           <p className="text-sm text-gray-500">Order #{order.id}</p>
           <h1 className="text-3xl font-bold text-gray-900">{formatUsdc(order.amount)}</h1>
         </div>
-        <button onClick={copyLink} className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-green-700">
+        <button onClick={copyLink} className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-green-800">
           <Copy className="h-4 w-4" />
           {copied ? 'Link copied' : 'Copy link'}
         </button>
@@ -256,13 +256,13 @@ function StatusTrack({ status }: { status: OrderStatus }) {
         const done = detour ? true : i <= reached
         const icon =
           s === status && detour && !detour.ok ? <XCircle className="h-5 w-5 text-amber-500" />
-          : done ? <CheckCircle className="h-5 w-5 text-green-600" />
+          : done ? <CheckCircle className="h-5 w-5 text-green-700" />
           : <Circle className="h-5 w-5 text-gray-300" />
         return (
           <li key={s} className="flex items-center gap-2">
             {i > 0 && <span className="w-6 h-px bg-gray-300" />}
             {icon}
-            <span className={done ? 'text-gray-900 font-medium' : 'text-gray-400'}>{s}</span>
+            <span className={done ? 'text-gray-900 font-medium' : 'text-gray-500'}>{s}</span>
           </li>
         )
       })}
@@ -282,7 +282,7 @@ function ActionButton({
   variant?: 'primary' | 'secondary' | 'danger'
 }) {
   const styles = {
-    primary: 'bg-green-600 text-white hover:bg-green-700',
+    primary: 'bg-green-700 text-white hover:bg-green-800',
     secondary: 'border-2 border-gray-300 text-gray-700 hover:bg-gray-50',
     danger: 'bg-red-600 text-white hover:bg-red-700',
   }[variant]

@@ -74,6 +74,16 @@ See [GETTING_STARTED.md](docs/GETTING_STARTED.md) for detailed setup instruction
 - Use TypeScript for props
 - Follow accessibility best practices
 
+### Accessibility
+
+Every page and state is scanned with axe-core against WCAG 2.1 AA in `frontend/e2e/accessibility.spec.ts`, and CI fails on any violation. The rules you'll hit most:
+
+- **Contrast:** text needs 4.5:1. Use `bg-green-700` or darker under white text (not `green-600`), and `text-gray-500` or darker for secondary text on light backgrounds (not `gray-400`).
+- **Links inside a sentence** must be underlined, not just coloured.
+- **Every form field needs a visible `<label>`**, and status and error messages should use `role="alert"`.
+
+If you add a page or a new state, add it to the list in that spec.
+
 ## Commit Message Format
 
 Use conventional commits:
