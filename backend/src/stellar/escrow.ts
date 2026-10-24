@@ -173,11 +173,16 @@ export class EscrowService {
   }
 }
 
+/** The contract stores amounts as i128, so nothing above this can be encoded. */
+const MAX_AMOUNT = 2n ** 127n - 1n
+
 export function parseUsdc(value: string): bigint {
   const match = /^(\d+)(?:\.(\d{1,7}))?$/.exec(value)
-  if (!match) throw new EscrowError('INVALID_AMOUNT', `"${value}" is not a valid USDC amount`)
+  if (!match) throw new EscrowError('INVALID_AMOUNT', `"${value.slice(0, 40)}" is not a valid USDC amount`)
   const [, whole, fraction = ''] = match
-  return BigInt(whole) * 10n ** BigInt(USDC_DECIMALS) + BigInt(fraction.padEnd(USDC_DECIMALS, '0'))
+  const amount = BigInt(whole) * 10n ** BigInt(USDC_DECIMALS) + BigInt(fraction.padEnd(USDC_DECIMALS, '0'))
+  if (amount > MAX_AMOUNT) throw new EscrowError('INVALID_AMOUNT', 'The amount is too large')
+  return amount
 }
 
 export function formatUsdc(value: bigint): string {

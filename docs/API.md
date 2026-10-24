@@ -11,6 +11,19 @@ The API never holds user keys. Every write follows the same two steps:
 
 The order id is the id assigned by the escrow contract. Amounts are decimal strings in USDC, with up to 7 decimal places.
 
+## Input limits
+
+Requests that break a limit are rejected with a `400` before anything is sent to the network.
+
+| Field | Rule |
+|---|---|
+| `amount`, `farmerAmount` | Decimal string, at most 7 decimals, at most the contract's 128-bit limit |
+| `deliveryDeadline` | ISO 8601 date in the future |
+| `reviewWindowHours` | Whole **number** (not a string) from 1 to 8,760 (one year) |
+| `reason` | Non-empty string, at most 500 characters (it is stored on-chain) |
+| `:orderId` | Positive integer within the contract's 64-bit limit |
+| Request body | A JSON object, at most 100 KB |
+
 ## Request ids
 
 Every response includes an `X-Request-Id` header (also exposed to browsers through CORS). Quote it when reporting a problem so the matching server log line can be found.
@@ -120,7 +133,7 @@ Response:
 
 | HTTP | Code | Cause |
 |---|---|---|
-| 400 | `MISSING_FIELD`, `INVALID_JSON`, `INVALID_ADDRESS`, `INVALID_AMOUNT`, `INVALID_DEADLINE`, `INVALID_ORDER_ID`, `INVALID_PARTIES`, `INVALID_SPLIT`, `INVALID_TRANSACTION` | Bad input, including a request body that is not valid JSON |
+| 400 | `MISSING_FIELD`, `INVALID_JSON`, `INVALID_BODY`, `INVALID_REASON`, `INVALID_ADDRESS`, `INVALID_AMOUNT`, `INVALID_DEADLINE`, `INVALID_ORDER_ID`, `INVALID_PARTIES`, `INVALID_SPLIT`, `INVALID_TRANSACTION` | Bad input, including a request body that is not valid JSON |
 | 403 | `UNAUTHORIZED` | The signer isn't allowed to perform this action |
 | 404 | `ORDER_NOT_FOUND`, `ACCOUNT_NOT_FOUND`, `NOT_FOUND` | Unknown order, unfunded account, or an unknown path or action. Unknown `/api` paths return this JSON format, not an HTML page |
 | 413 | `PAYLOAD_TOO_LARGE` | Request body over 100 KB |
