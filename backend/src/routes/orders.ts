@@ -4,6 +4,11 @@ import { EscrowError, EscrowService, type Order, parseUsdc } from '../stellar/es
 
 type Role = 'buyer' | 'farmer' | 'arbiter'
 
+// Limits keep every value inside what the contract can encode, and keep on-chain data small.
+const MAX_ORDER_ID = 2n ** 64n - 1n // u64
+const MAX_REVIEW_WINDOW_HOURS = 24 * 365
+const MAX_REASON_LENGTH = 500
+
 interface ActionSpec {
   method: string
   signer: Role
@@ -20,7 +25,7 @@ const ACTIONS: Record<string, ActionSpec> = {
   dispute: {
     method: 'open_dispute',
     signer: 'buyer',
-    args: (body) => [nativeToScVal(requireString(body, 'reason'), { type: 'string' })],
+    args: (body) => [nativeToScVal(parseReason(body), { type: 'string' })],
   },
   resolve: {
     method: 'resolve_dispute',
@@ -35,14 +40,25 @@ export function ordersRouter(escrow: EscrowService): Router {
   router.post(
     '/orders',
     handle(async (req, res) => {
-      const body = req.body ?? {}
+      const body = requireObject(req.body)
       const deadline = Date.parse(requireString(body, 'deliveryDeadline'))
-      const reviewWindowHours = Number(body.reviewWindowHours)
+      const reviewWindowHours = body.reviewWindowHours
       if (Number.isNaN(deadline)) {
         throw new EscrowError('INVALID_DEADLINE', 'deliveryDeadline must be an ISO 8601 date')
       }
-      if (!Number.isInteger(reviewWindowHours) || reviewWindowHours <= 0) {
-        throw new EscrowError('INVALID_DEADLINE', 'reviewWindowHours must be a positive integer')
+      if (deadline <= Date.now()) {
+        throw new EscrowError('INVALID_DEADLINE', 'deliveryDeadline must be in the future')
+      }
+      if (
+        typeof reviewWindowHours !== 'number' ||
+        !Number.isInteger(reviewWindowHours) ||
+        reviewWindowHours < 1 ||
+        reviewWindowHours > MAX_REVIEW_WINDOW_HOURS
+      ) {
+        throw new EscrowError(
+          'INVALID_DEADLINE',
+          `reviewWindowHours must be a whole number between 1 and ${MAX_REVIEW_WINDOW_HOURS}`,
+        )
       }
 
       const xdr = await escrow.buildCreateOrder({
@@ -70,14 +86,17 @@ export function ordersRouter(escrow: EscrowService): Router {
       const spec = ACTIONS[req.params.action]
       if (!spec) throw new EscrowError('NOT_FOUND', `Unknown action "${req.params.action}"`, 404)
 
+      // Validate everything the client sent before spending an RPC call on it.
       const orderId = parseOrderId(req.params.orderId)
-      const order = await escrow.getOrder(orderId)
-      const body = req.body ?? {}
-      // claim_payment needs no particular signer; anyone may pay the fee to trigger it.
-      const signer =
-        req.params.action === 'claim' && body.caller ? requireAccount(body, 'caller') : partyOf(order, spec.signer)
+      const body = requireObject(req.body)
+      const args = spec.args?.(body)
+      const caller = req.params.action === 'claim' && body.caller ? requireAccount(body, 'caller') : undefined
 
-      const xdr = await escrow.buildOrderCall(signer, spec.method, orderId, spec.args?.(body))
+      const order = await escrow.getOrder(orderId)
+      // claim_payment needs no particular signer; anyone may pay the fee to trigger it.
+      const signer = caller ?? partyOf(order, spec.signer)
+
+      const xdr = await escrow.buildOrderCall(signer, spec.method, orderId, args)
       res.json({ orderId: order.id, action: req.params.action, xdr })
     }),
   )
@@ -85,7 +104,7 @@ export function ordersRouter(escrow: EscrowService): Router {
   router.post(
     '/transactions',
     handle(async (req, res) => {
-      const { hash, returnValue } = await escrow.submit(requireString(req.body ?? {}, 'signedXdr'))
+      const { hash, returnValue } = await escrow.submit(requireString(requireObject(req.body), 'signedXdr'))
       // create_order returns the new order id; other methods return nothing.
       const orderId = typeof returnValue === 'bigint' ? returnValue.toString() : undefined
       res.json({ hash, ...(orderId && { orderId }) })
@@ -106,8 +125,26 @@ function partyOf(order: Order, role: Role): string {
 }
 
 function parseOrderId(value: string): bigint {
-  if (!/^\d+$/.test(value)) throw new EscrowError('INVALID_ORDER_ID', 'orderId must be a positive integer')
+  if (!/^\d+$/.test(value) || BigInt(value) > MAX_ORDER_ID) {
+    throw new EscrowError('INVALID_ORDER_ID', 'orderId must be a positive integer')
+  }
   return BigInt(value)
+}
+
+function parseReason(body: Record<string, unknown>): string {
+  const reason = requireString(body, 'reason').trim()
+  if (reason.length > MAX_REASON_LENGTH) {
+    throw new EscrowError('INVALID_REASON', `reason must be at most ${MAX_REASON_LENGTH} characters`)
+  }
+  return reason
+}
+
+/** Request bodies must be JSON objects; arrays, strings and null are rejected up front. */
+function requireObject(body: unknown): Record<string, unknown> {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    throw new EscrowError('INVALID_BODY', 'Request body must be a JSON object')
+  }
+  return body as Record<string, unknown>
 }
 
 function requireString(body: Record<string, unknown>, field: string): string {
