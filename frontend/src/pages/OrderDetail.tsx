@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { CheckCircle, Circle, Copy, XCircle } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
@@ -50,6 +50,10 @@ export default function OrderDetail() {
     return () => clearInterval(timer)
   }, [])
 
+  // The button that was clicked is disabled (and often removed) while the transaction runs, so
+  // keyboard focus would fall back to the top of the page. Return it to the actions section.
+  const actionsHeading = useRef<HTMLHeadingElement>(null)
+
   async function act(action: OrderAction, body: Record<string, string> = {}) {
     const result = await run(() => api.buildAction(orderId, action, body))
     if (result) {
@@ -57,6 +61,7 @@ export default function OrderDetail() {
       setFarmerAmount('')
       await load()
     }
+    actionsHeading.current?.focus()
   }
 
   function copyLink() {
@@ -133,11 +138,12 @@ export default function OrderDetail() {
         <button onClick={copyLink} className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-green-800">
           <Copy className="h-4 w-4" />
           {copied ? 'Link copied' : 'Copy link'}
+          <span className="sr-only" role="status">{copied ? 'Link copied to the clipboard' : ''}</span>
         </button>
       </div>
 
       <StatusTrack status={order.status} />
-      <p className="mt-4 text-gray-700">{STATUS_TEXT[order.status]}</p>
+      <p role="status" className="mt-4 text-gray-700">{STATUS_TEXT[order.status]}</p>
 
       <dl className="mt-6 grid sm:grid-cols-2 gap-4 bg-white border border-gray-200 rounded-xl p-6 text-sm">
         <Party label="Buyer" value={order.buyer} you={role === 'buyer'} />
@@ -159,7 +165,13 @@ export default function OrderDetail() {
       </dl>
 
       <section className="mt-6 bg-white border border-gray-200 rounded-xl p-6">
-        <h2 className="font-semibold text-gray-900">Your actions</h2>
+        <h2
+          ref={actionsHeading}
+          tabIndex={-1}
+          className="font-semibold text-gray-900 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-green-700"
+        >
+          Your actions
+        </h2>
         {!address ? (
           <p className="text-gray-600 mt-2 text-sm">Connect your wallet to act on this order.</p>
         ) : (
@@ -217,8 +229,15 @@ export default function OrderDetail() {
             Switch Freighter to Testnet to sign.
           </p>
         )}
-        {busy && <p className="mt-4 text-sm text-gray-600">{STEP_LABELS[step]}</p>}
-        {error && <p className="mt-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">{error}</p>}
+        {/* Always rendered so screen readers announce progress as its text changes. */}
+        <div role="status" className={busy ? 'mt-4 text-sm text-gray-600' : undefined}>
+          {busy ? STEP_LABELS[step] : null}
+        </div>
+        {error && (
+          <p role="alert" className="mt-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+            {error}
+          </p>
+        )}
       </section>
     </Shell>
   )

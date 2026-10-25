@@ -35,7 +35,7 @@ export default function WalletButton() {
           <Wallet className="h-4 w-4" />
           Connect wallet
         </button>
-        {error && <span className="text-xs text-red-600 mt-1">{error}</span>}
+        {error && <span role="alert" className="text-xs text-red-600 mt-1">{error}</span>}
       </div>
     )
   }

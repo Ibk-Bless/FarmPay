@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import WalletButton from '../components/WalletButton'
@@ -42,6 +42,8 @@ export default function OrderCreation() {
     return null
   }
 
+  const submitButton = useRef<HTMLButtonElement>(null)
+
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
     if (!address) return
@@ -61,7 +63,13 @@ export default function OrderCreation() {
         reviewWindowHours,
       }),
     )
-    if (result?.orderId) navigate(`/order/${result.orderId}`)
+    if (result?.orderId) {
+      navigate(`/order/${result.orderId}`)
+    } else {
+      // The submit button was disabled while running, which drops keyboard focus. Put it back
+      // once the button is enabled again so the user can read the error and retry.
+      requestAnimationFrame(() => submitButton.current?.focus())
+    }
   }
 
   const input =
@@ -141,10 +149,10 @@ export default function OrderCreation() {
               </p>
             )}
             {(formError || error) && (
-              <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">{formError ?? error}</p>
+              <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">{formError ?? error}</p>
             )}
 
-            <button type="submit" disabled={busy || wrongNetwork}
+            <button ref={submitButton} type="submit" disabled={busy || wrongNetwork}
               className="w-full bg-green-700 text-white py-3 rounded-lg font-semibold hover:bg-green-800 transition disabled:opacity-50 disabled:cursor-not-allowed">
               {busy ? STEP_LABELS[step] : 'Lock funds and create order'}
             </button>
