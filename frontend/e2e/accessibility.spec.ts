@@ -70,3 +70,17 @@ test('no accessibility violations: Freighter not installed', async ({ openAs }) 
   await expect(page.getByRole('link', { name: 'Install Freighter' })).toBeVisible()
   await expectNoViolations(page)
 })
+
+test('no accessibility violations: error and recovery screens', async ({ openAs }) => {
+  const down = await openAs('buyer', '/')
+  await down.context().route('**/api/orders/*', (route) => route.abort('connectionrefused'))
+  await down.goto('/order/1')
+  await expect(down.getByRole('alert')).toBeVisible()
+  await expectNoViolations(down)
+
+  const crashed = await openAs('buyer', '/')
+  await crashed.context().route('**/api/orders/1', (route) => route.fulfill({ status: 200, json: { unexpected: true } }))
+  await crashed.goto('/order/1')
+  await expect(crashed.getByRole('heading', { name: 'Something went wrong' })).toBeVisible()
+  await expectNoViolations(crashed)
+})
