@@ -107,7 +107,7 @@ docs: document resolve endpoint body
 
 - **Contract:** every change to `contracts/escrow/src/lib.rs` needs a test in `src/test.rs`. Run them with `cargo test`.
 - **Frontend:** end-to-end tests in `frontend/e2e` run the app in a real browser with a fake Freighter wallet and a mocked API, so they need no backend or testnet. Run them with `npm run test:e2e` (first time: `npx playwright install chromium`). UI changes should come with a test.
-- **Backend:** there is no test runner yet ([#10](https://github.com/Ibk-Bless/FarmPay/issues/10)). Until then, check API changes against testnet. [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md#try-the-flow-from-the-command-line) shows how.
+- **Backend:** there is no test runner yet ([#10](https://github.com/Ibk-Bless/FarmPay/issues/10)). Until then, run `backend/scripts/check-input-validation.sh` against a running backend after changing request validation (CI runs it too): it sends 27 malformed requests and fails if any produces a 5xx. Check other API changes against testnet. [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md#try-the-flow-from-the-command-line) shows how.
 
 ## Documentation
 

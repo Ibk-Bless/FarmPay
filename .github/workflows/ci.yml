@@ -45,6 +45,16 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm run build
+      # Malformed input must always be a 4xx. All cases fail before any network call, so no testnet needed.
+      - name: Input validation checks
+        env:
+          ESCROW_CONTRACT_ID: CBEZZ7PQPDQWRMZUSBI3CPB55RDPLIUF2D4NLMFKXKQO4CNAOG34OGKS
+          PORT: 4000
+          LOG_REQUESTS: 'false'
+        run: |
+          node dist/index.js &
+          for i in $(seq 1 30); do curl -sf localhost:4000/api/health >/dev/null && break; sleep 1; done
+          ./scripts/check-input-validation.sh localhost:4000
 
   frontend:
     name: Frontend
