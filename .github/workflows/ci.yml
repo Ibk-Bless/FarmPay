@@ -55,6 +55,11 @@ jobs:
           node dist/index.js &
           for i in $(seq 1 30); do curl -sf localhost:4000/api/health >/dev/null && break; sleep 1; done
           ./scripts/check-input-validation.sh localhost:4000
+          # Only a single call to the escrow contract may be relayed (see docs/ARCHITECTURE.md)
+          node scripts/check-relay-rules.mjs localhost:4000
+      # What users see when the Stellar network fails, using a fake RPC
+      - name: RPC failure handling checks
+        run: node scripts/check-rpc-failures.mjs
 
   frontend:
     name: Frontend

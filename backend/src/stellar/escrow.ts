@@ -60,6 +60,60 @@ const CONTRACT_ERRORS: Record<number, { code: string; status: number }> = {
   8: { code: 'INVALID_SPLIT', status: 400 },
 }
 
+// What the network says when it refuses a transaction, in terms a user can act on.
+// Keys are Stellar transaction result codes.
+const SUBMIT_ERRORS: Record<string, { code: string; status: number; message: string }> = {
+  txTooLate: {
+    code: 'TRANSACTION_EXPIRED',
+    status: 409,
+    message: 'The transaction expired before it was submitted. Prepare it again and approve it within a few minutes.',
+  },
+  txBadSeq: {
+    code: 'TRANSACTION_STALE',
+    status: 409,
+    message: 'Your account changed since this transaction was prepared. Another transaction may have gone through first, possibly this same one. Check the order, then try again if nothing changed.',
+  },
+  txBadAuth: {
+    code: 'BAD_SIGNATURE',
+    status: 400,
+    message: 'The transaction was not signed by the right account. Check that your wallet is using the account for this order.',
+  },
+  txBadAuthExtra: {
+    code: 'BAD_SIGNATURE',
+    status: 400,
+    message: 'The transaction carries a signature it does not need. Please prepare it again.',
+  },
+  txInsufficientBalance: {
+    code: 'INSUFFICIENT_FUNDS',
+    status: 409,
+    message: 'Your account does not have enough XLM to pay the network fee and keep its minimum balance.',
+  },
+  txInsufficientFee: {
+    code: 'FEE_TOO_LOW',
+    status: 409,
+    message: 'The network fee was too low because the network is busy. Please prepare the transaction again.',
+  },
+  txNoAccount: {
+    code: 'ACCOUNT_NOT_FOUND',
+    status: 404,
+    message: 'The signing account does not exist on the network yet. Fund it with XLM first.',
+  },
+}
+
+/**
+ * True when the Stellar RPC could not be reached or failed on its side (as opposed to it
+ * answering that something we asked for is wrong). Axios-style errors with no response are
+ * connection failures; 5xx responses are an RPC outage.
+ */
+export function isNetworkFailure(err: unknown): boolean {
+  const e = err as { name?: string; message?: string; response?: { status?: number } } | null
+  if (e?.name === 'AxiosError') return !e.response || (e.response.status ?? 0) >= 500
+  return /fetch failed|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|socket hang up/i.test(String(e?.message ?? ''))
+}
+
+const rpcUnavailable = () =>
+  new EscrowError('RPC_UNAVAILABLE', "Can't reach the Stellar network right now. Please try again in a moment.", 503)
+
 export class EscrowError extends Error {
   constructor(
     public code: string,
@@ -109,7 +163,7 @@ export class EscrowService {
     // Read-only call: simulate with a throwaway source account, never submitted.
     const source = new Account(Keypair.random().publicKey(), '0')
     const tx = this.transaction(source, 'get_order', [nativeToScVal(orderId, { type: 'u64' })])
-    const sim = await this.server.simulateTransaction(tx)
+    const sim = await this.rpc(() => this.server.simulateTransaction(tx))
     if (rpc.Api.isSimulationError(sim)) throw contractError(sim.error)
     if (!sim.result) throw new EscrowError('SIMULATION_FAILED', 'Contract returned no result', 502)
     return toOrder(scValToNative(sim.result.retval))
@@ -127,12 +181,33 @@ export class EscrowService {
       throw new EscrowError('INVALID_TRANSACTION', 'Transaction must be a single FarmPay escrow call')
     }
 
-    const sent = await this.server.sendTransaction(tx)
-    if (sent.status === 'ERROR' || sent.status === 'TRY_AGAIN_LATER') {
-      throw new EscrowError('SUBMIT_FAILED', `Network rejected transaction (${sent.status})`, 502)
+    const sent = await this.rpc(() => this.server.sendTransaction(tx))
+    if (sent.status === 'TRY_AGAIN_LATER') {
+      throw new EscrowError(
+        'NETWORK_BUSY',
+        'The network is busy, or already has this transaction. Check the order, then try again if nothing changed.',
+        503,
+      )
+    }
+    if (sent.status === 'ERROR') {
+      const reason = SUBMIT_ERRORS[sent.errorResult?.result.type ?? '']
+      if (reason) throw new EscrowError(reason.code, reason.message, reason.status)
+      throw new EscrowError('SUBMIT_FAILED', `The network rejected the transaction (${sent.errorResult?.result.type ?? 'unknown reason'})`, 502)
     }
 
-    const result = await this.server.pollTransaction(sent.hash, { attempts: 30 })
+    let result
+    try {
+      result = await this.server.pollTransaction(sent.hash, { attempts: 30 })
+    } catch (err) {
+      // The transaction was accepted for processing, so it may still succeed. Never tell the
+      // user to simply retry: a second submission could duplicate the action.
+      if (!isNetworkFailure(err)) throw err
+      throw new EscrowError(
+        'SUBMIT_UNCERTAIN',
+        `Your transaction was sent, but we lost contact with the network before it was confirmed. Check the order before trying again. Transaction: ${sent.hash}`,
+        502,
+      )
+    }
     if (result.status !== rpc.Api.GetTransactionStatus.SUCCESS) {
       throw new EscrowError('TRANSACTION_FAILED', `Transaction ${sent.hash} ended as ${result.status}`, 502)
     }
@@ -147,13 +222,36 @@ export class EscrowService {
     try {
       source = await this.server.getAccount(signer)
     } catch {
+      // The SDK reports every failure here as "account not found", including an unreachable RPC.
+      // Check which it really is, so a network blip doesn't tell a funded user their account is gone.
+      if (await this.isUnreachable()) throw rpcUnavailable()
       throw new EscrowError('ACCOUNT_NOT_FOUND', `Account ${signer} does not exist on the network`, 404)
     }
     try {
       const prepared = await this.server.prepareTransaction(this.transaction(source, method, args))
       return prepared.toXDR()
     } catch (err) {
+      if (isNetworkFailure(err)) throw rpcUnavailable()
       throw contractError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  /** Runs an RPC call, turning connection failures into a clear 503. */
+  private async rpc<T>(call: () => Promise<T>): Promise<T> {
+    try {
+      return await call()
+    } catch (err) {
+      if (isNetworkFailure(err)) throw rpcUnavailable()
+      throw err
+    }
+  }
+
+  private async isUnreachable(): Promise<boolean> {
+    try {
+      await this.server.getHealth()
+      return false
+    } catch {
+      return true
     }
   }
 
