@@ -1,5 +1,11 @@
 // Typed client for the FarmPay backend (docs/API.md).
 
+import { ApiError } from './errors'
+import { demoApi } from '../demo/demoApi'
+import { isDemo } from './mode'
+
+export { ApiError }
+
 export type OrderStatus =
   | 'Funded'
   | 'Accepted'
@@ -41,14 +47,6 @@ export interface SubmitResult {
   orderId?: string
 }
 
-export class ApiError extends Error {
-  constructor(
-    public code: string,
-    message: string,
-  ) {
-    super(message)
-  }
-}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response
@@ -82,7 +80,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T
 }
 
-export const api = {
+const realApi = {
   getOrder: (id: string) => request<Order>(`/orders/${encodeURIComponent(id)}`),
 
   buildCreateOrder: (input: CreateOrderInput) =>
@@ -97,6 +95,9 @@ export const api = {
   submit: (signedXdr: string) =>
     request<SubmitResult>('/transactions', { method: 'POST', body: JSON.stringify({ signedXdr }) }),
 }
+
+// The demo build swaps in an in-browser implementation with the same shape (src/demo/).
+export const api: typeof realApi = isDemo ? demoApi : realApi
 
 // User-facing messages for the API's error codes.
 const MESSAGES: Record<string, string> = {

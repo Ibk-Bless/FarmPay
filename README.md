@@ -44,6 +44,19 @@ Every order and its outcome is recorded on-chain, which gives each farmer a veri
 
 See [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) for diagrams and a "what if…?" guide, and [contracts/escrow/README.md](contracts/escrow/README.md) for the full contract specification.
 
+## Try it
+
+**Click through the whole flow in two minutes, with no wallet, no testnet and no backend:**
+
+```bash
+git clone https://github.com/Ibk-Bless/FarmPay.git
+cd FarmPay/frontend
+npm install
+npm run dev:demo      # open http://localhost:3000
+```
+
+The interactive demo runs the real app against an in-browser simulation of the escrow contract. Pick a role (buyer, farmer or cooperative), create and fund an order, accept it, deliver, dispute, split the funds, and **skip ahead in time** to watch the review window end and the farmer claim payment. It applies the same rules and error codes as the contract. Everything in it is simulated and clearly labelled as such; the real thing runs on Stellar testnet (see [Getting Started](#getting-started)).
+
 ## Why Stellar
 
 - **Soroban escrow:** the rules are enforced by a contract, not by FarmPay. FarmPay never holds funds.
@@ -129,6 +142,8 @@ Open http://localhost:3000, connect [Freighter](https://www.freighter.app/) on T
 - [x] One-command testnet setup with test USDC
 - [x] CI for contract, backend and frontend
 - [x] Wallet connection (Freighter)
+- [x] Interactive demo: the whole flow in the browser with no setup (`npm run dev:demo`)
+- [ ] Host the demo publicly (GitHub Pages)
 - [x] Create order screen
 - [x] Order screen with every role's actions: accept, deliver, confirm, dispute, claim, cancel, resolve
 - [ ] Order listing and farmer delivery history (event indexer)

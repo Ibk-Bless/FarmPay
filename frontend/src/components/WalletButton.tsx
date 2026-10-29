@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import { Wallet } from 'lucide-react'
 import { useWallet } from '../wallet/context'
+import RoleSwitcher from '../demo/RoleSwitcher'
+import { isDemo } from '../lib/mode'
 import { shortAddress } from '../lib/format'
 
 export default function WalletButton() {
   const { status, address, wrongNetwork, connect, disconnect } = useWallet()
   const [error, setError] = useState<string | null>(null)
+
+  // The demo has no wallet: you choose who to act as instead.
+  if (isDemo) return <RoleSwitcher />
 
   if (status === 'loading') {
     return <span className="text-sm text-gray-500">Checking wallet…</span>

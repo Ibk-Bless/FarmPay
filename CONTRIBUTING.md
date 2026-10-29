@@ -74,6 +74,10 @@ See [GETTING_STARTED.md](docs/GETTING_STARTED.md) for detailed setup instruction
 - Use TypeScript for props
 - Follow accessibility best practices
 
+### Working on the frontend
+
+`cd frontend && npm run dev:demo` runs the app with a simulated contract, so you can work on the UI without a backend, a wallet or testnet accounts. If your change affects order rules or what the API returns, mirror it in `frontend/src/demo/demoApi.ts`; the `e2e-demo/` tests cover the demo.
+
 ### Accessibility
 
 Every page and state is scanned with axe-core against WCAG 2.1 AA in `frontend/e2e/accessibility.spec.ts`, and `frontend/e2e/keyboard.spec.ts` covers what a scanner can't: focus after actions, screen-reader announcements and focus indicators. CI fails on any violation. The rules you'll hit most:
