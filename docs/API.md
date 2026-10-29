@@ -133,12 +133,15 @@ Response:
 
 | HTTP | Code | Cause |
 |---|---|---|
-| 400 | `MISSING_FIELD`, `INVALID_JSON`, `INVALID_BODY`, `INVALID_REASON`, `INVALID_ADDRESS`, `INVALID_AMOUNT`, `INVALID_DEADLINE`, `INVALID_ORDER_ID`, `INVALID_PARTIES`, `INVALID_SPLIT`, `INVALID_TRANSACTION` | Bad input, including a request body that is not valid JSON |
+| 400 | `BAD_SIGNATURE`, `MISSING_FIELD`, `INVALID_JSON`, `INVALID_BODY`, `INVALID_REASON`, `INVALID_ADDRESS`, `INVALID_AMOUNT`, `INVALID_DEADLINE`, `INVALID_ORDER_ID`, `INVALID_PARTIES`, `INVALID_SPLIT`, `INVALID_TRANSACTION` | Bad input, including a request body that is not valid JSON |
 | 403 | `UNAUTHORIZED` | The signer isn't allowed to perform this action |
 | 404 | `ORDER_NOT_FOUND`, `ACCOUNT_NOT_FOUND`, `NOT_FOUND` | Unknown order, unfunded account, or an unknown path or action. Unknown `/api` paths return this JSON format, not an HTML page |
 | 413 | `PAYLOAD_TOO_LARGE` | Request body over 100 KB |
 | 409 | `INVALID_STATUS`, `TOO_EARLY`, `TOO_LATE` | Action not allowed in the order's current state or at the current time |
-| 502 | `SIMULATION_FAILED`, `SUBMIT_FAILED`, `TRANSACTION_FAILED` | Network or RPC failure |
+| 409 | `TRANSACTION_EXPIRED`, `TRANSACTION_STALE`, `INSUFFICIENT_FUNDS`, `FEE_TOO_LOW` | The network refused a submitted transaction. The message says what to do (prepare it again, check the order, add XLM) |
+| 502 | `SIMULATION_FAILED`, `SUBMIT_FAILED`, `TRANSACTION_FAILED` | The network or RPC refused or failed for another reason |
+| 502 | `SUBMIT_UNCERTAIN` | The transaction was sent but the connection dropped before it was confirmed. **Do not resubmit blindly**: check the order first; the message includes the transaction hash |
+| 503 | `RPC_UNAVAILABLE`, `NETWORK_BUSY` | The Stellar RPC can't be reached, or the network is busy or already has this transaction. Safe to retry after a moment |
 
 Contract error codes map one-to-one to the contract's `Error` enum. See [contracts/escrow/README.md](../contracts/escrow/README.md#errors).
 

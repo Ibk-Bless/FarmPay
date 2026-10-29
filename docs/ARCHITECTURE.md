@@ -63,6 +63,8 @@ Refunded           Refunded
 | Cooperative | Split the funds of a **disputed** order | Touch undisputed orders, or pay out more than the order amount |
 | FarmPay | Build and relay transactions | Sign for anyone, or move any funds |
 
+The relay rule (`POST /api/transactions` only forwards a single call to the escrow contract) is checked in CI against payments, account merges, multi-operation transactions, calls to other contracts, contract creation and fee-bump wrappers: `backend/scripts/check-relay-rules.mjs`.
+
 The main trust assumption is the cooperative's judgement in disputes. Both parties see the arbiter's address before any money moves.
 
 ## Design decisions
