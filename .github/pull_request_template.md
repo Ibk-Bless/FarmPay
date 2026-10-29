@@ -11,6 +11,7 @@ Closes #
 ## Checklist
 
 - [ ] CI passes (fmt, clippy, contract tests, backend build, frontend lint, build and e2e tests)
+- [ ] This PR does not change CI workflows, dependencies or scripts, or the description explains exactly why it does
 - [ ] Contract behaviour changes are reflected in `contracts/escrow/README.md` and covered by tests
 - [ ] API changes are reflected in `docs/API.md`
 - [ ] UI changes include a screenshot and an e2e test in `frontend/e2e`

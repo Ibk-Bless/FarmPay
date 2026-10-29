@@ -1,0 +1,11 @@
+# Code owners are requested for review automatically. Everything needs the maintainer, and the
+# paths below are the ones a malicious change would target (CI, dependencies, scripts that run
+# on contributors' machines), so they are listed explicitly.
+*                          @Ibk-Bless
+/.github/                  @Ibk-Bless
+/setup.sh                  @Ibk-Bless
+/backend/scripts/          @Ibk-Bless
+**/package.json            @Ibk-Bless
+**/package-lock.json       @Ibk-Bless
+**/Cargo.toml              @Ibk-Bless
+**/Cargo.lock              @Ibk-Bless

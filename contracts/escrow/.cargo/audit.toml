@@ -1,0 +1,12 @@
+# Reviewed exceptions for `cargo audit` (run in CI). Add a reason with every entry,
+# and remove an entry as soon as its fix is available.
+
+[advisories]
+ignore = [
+  # crypto-bigint 0.5.5: timing variability in constant-time operations.
+  # Not in the shipped contract: `cargo tree --target wasm32v1-none -e normal -i crypto-bigint`
+  # finds nothing. It comes in only through soroban-env-host, the host emulator that the Soroban
+  # SDK's test tooling runs in `cargo test`, and this contract does no constant-time cryptography.
+  # It cannot be upgraded until the Soroban SDK moves off 0.5. Reviewed 2026-10-28.
+  "RUSTSEC-2026-0387",
+]
