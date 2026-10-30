@@ -40,8 +40,16 @@ const pages: { name: string; role: Role; path: (api: MockApi) => string; ready: 
   {
     name: 'order: disputed (cooperative, split form)',
     role: 'coop',
-    path: (api) => `/order/${api.seed({ status: 'Disputed', reviewDeadline: now() + 3600 }).id}`,
+    path: (api) =>
+      `/order/${api.seed({ status: 'Disputed', reviewDeadline: now() + 3600, disputeDeadline: now() + 86400 }).id}`,
     ready: 'Resolve dispute',
+  },
+  {
+    name: 'order: dispute deadline passed (stranger, settle by default)',
+    role: 'stranger',
+    path: (api) =>
+      `/order/${api.seed({ status: 'Disputed', reviewDeadline: now() - 9000, disputeDeadline: now() - 60 }).id}`,
+    ready: 'Settle by default (even split)',
   },
   {
     name: 'order: released (stranger)',

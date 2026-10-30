@@ -14,7 +14,7 @@ stellar contract deploy \
   -- --token <USDC_TOKEN_CONTRACT_ID>
 ```
 
-The constructor takes the escrow token. The contract has no admin and no upgrade path, so a new version means a new deployment. Orders on an older deployment can still be completed there.
+The constructor takes the escrow token. `create_order` gained a `dispute_window` argument on 30 October 2026, so a contract deployed before that is not compatible with this backend or frontend: redeploy (`./setup.sh` does it) and point `ESCROW_CONTRACT_ID` at the new one. Orders on an old deployment can still be completed there. The contract has no admin and no upgrade path, so a new version means a new deployment. Orders on an older deployment can still be completed there.
 
 To get the token contract ID for a classic Stellar asset:
 

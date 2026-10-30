@@ -15,6 +15,14 @@ const REVIEW_WINDOWS = [
   { hours: 168, label: '7 days' },
 ]
 
+const DISPUTE_WINDOWS = [
+  { days: 1, label: '1 day' },
+  { days: 3, label: '3 days' },
+  { days: 7, label: '7 days (recommended)' },
+  { days: 14, label: '14 days' },
+  { days: 30, label: '30 days' },
+]
+
 function defaultDeliveryDate(): string {
   const date = new Date(Date.now() + 7 * 86400 * 1000)
   return date.toISOString().slice(0, 10)
@@ -30,6 +38,7 @@ export default function OrderCreation() {
   const [amount, setAmount] = useState('')
   const [deliveryDate, setDeliveryDate] = useState(defaultDeliveryDate)
   const [reviewWindowHours, setReviewWindowHours] = useState(72)
+  const [disputeWindowDays, setDisputeWindowDays] = useState(7)
   const [formError, setFormError] = useState<string | null>(null)
 
   function validate(): string | null {
@@ -61,6 +70,7 @@ export default function OrderCreation() {
         amount,
         deliveryDeadline: deadline.toISOString(),
         reviewWindowHours,
+        disputeWindowDays,
       }),
     )
     if (result?.orderId) {
@@ -140,6 +150,22 @@ export default function OrderCreation() {
               <p className="text-xs text-gray-500 mt-1">
                 Time you have to confirm or dispute once the farmer marks the order delivered. After that, the
                 farmer can claim the payment.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="dispute-window">
+                Time for the cooperative to decide a dispute
+              </label>
+              <select id="dispute-window" className={input} value={disputeWindowDays}
+                onChange={(e) => setDisputeWindowDays(Number(e.target.value))}>
+                {DISPUTE_WINDOWS.map((w) => (
+                  <option key={w.days} value={w.days}>{w.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                If you open a dispute and the cooperative has not ruled by then, anyone can settle it with an even
+                split, so the money is never stuck.
               </p>
             </div>
 

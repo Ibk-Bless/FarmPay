@@ -36,6 +36,8 @@ export interface Order {
   deliveryDeadline: number
   reviewWindow: number
   reviewDeadline: number
+  disputeWindow: number
+  disputeDeadline: number
   status: OrderStatus
 }
 
@@ -46,6 +48,7 @@ export interface CreateOrderParams {
   amount: bigint
   deliveryDeadline: number
   reviewWindow: number
+  disputeWindow: number
 }
 
 // Mirrors the contract's `Error` enum.
@@ -146,6 +149,7 @@ export class EscrowService {
       nativeToScVal(p.amount, { type: 'i128' }),
       nativeToScVal(p.deliveryDeadline, { type: 'u64' }),
       nativeToScVal(p.reviewWindow, { type: 'u64' }),
+      nativeToScVal(p.disputeWindow, { type: 'u64' }),
     ])
   }
 
@@ -313,6 +317,8 @@ function toOrder(raw: Record<string, unknown>): Order {
     deliveryDeadline: Number(raw.delivery_deadline),
     reviewWindow: Number(raw.review_window),
     reviewDeadline: Number(raw.review_deadline),
+    disputeWindow: Number(raw.dispute_window),
+    disputeDeadline: Number(raw.dispute_deadline),
     status: status as OrderStatus,
   }
 }

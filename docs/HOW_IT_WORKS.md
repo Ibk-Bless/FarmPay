@@ -24,7 +24,8 @@ stateDiagram-v2
     Accepted --> Refunded: buyer cancels after the delivery deadline
     Delivered --> Released: buyer confirms, or the review window ends
     Delivered --> Disputed: buyer disputes within the review window
-    Disputed --> Resolved: cooperative splits the funds
+    Disputed --> Resolved: cooperative splits the funds in time
+    Disputed --> Resolved: nobody rules in time, so anyone settles it 50/50
     Released --> [*]
     Refunded --> [*]
     Resolved --> [*]
@@ -67,9 +68,16 @@ sequenceDiagram
     Farmer->>Escrow: mark delivered
     Buyer->>Escrow: dispute: "200kg short"
     Note over Escrow: Funds stay locked
-    Coop->>Escrow: resolve: 800 USDC to the farmer
-    Escrow->>Farmer: 800 USDC
-    Escrow->>Buyer: 200 USDC refunded
+    alt Cooperative rules before the deadline
+        Coop->>Escrow: resolve: 800 USDC to the farmer
+        Escrow->>Farmer: 800 USDC
+        Escrow->>Buyer: 200 USDC refunded
+    else Nobody rules in time
+        Note over Escrow: Dispute deadline passes
+        Farmer->>Escrow: settle by default (anyone can)
+        Escrow->>Farmer: 500 USDC
+        Escrow->>Buyer: 500 USDC
+    end
 ```
 
 The cooperative can pay the farmer anything from 0% to 100% of the order, and the rest goes back to the buyer. It can only act on a disputed order, and never for more than the order amount.
@@ -111,13 +119,13 @@ The buyer cancels at any time before acceptance and gets a full refund.
 After the delivery deadline, the buyer can cancel and get a full refund.
 
 **…the buyer and farmer disagree?**
-The buyer opens a dispute inside the review window, and the cooperative decides the split.
+The buyer opens a dispute inside the review window, and the cooperative decides the split before the dispute deadline (the buyer chooses 1 to 30 days when creating the order).
 
 **…the buyer waits until the window has closed to dispute?**
 Too late. The contract rejects the dispute and the farmer can claim payment. This is what stops a buyer from holding a farmer's payment hostage.
 
 **…the cooperative never resolves a dispute?**
-This is a known gap. A disputed order currently has no timeout, so if the cooperative disappears or loses its key, the funds in that order stay locked. See [Known limitations](#known-limitations).
+The money is not stuck. Once the dispute deadline passes, the cooperative can no longer rule and **anyone** (the buyer, the farmer, or a stranger paying the fee) can settle the order. The funds are split evenly, and an odd last unit goes to the buyer. A split is the default because refunding the buyer would let a dishonest buyer dispute a good delivery and keep the goods, while paying the farmer would punish a buyer with a real problem. Splitting limits either side's loss to half, so both want the cooperative to act. The reasoning is in the [contract spec](../contracts/escrow/README.md#why-disputes-have-a-deadline-and-why-the-default-is-a-split).
 
 **…the cooperative is biased?**
 Both sides see the arbiter's address before any money moves, and the buyer picks it when creating the order, so a farmer who doesn't trust the named cooperative can simply decline to accept. Beyond that, the arbiter is a trusted role in this version.
@@ -126,7 +134,6 @@ Both sides see the arbiter's address before any money moves, and the buyer picks
 
 These are real, and they're on the roadmap:
 
-- **A dispute with an unresponsive arbiter locks the funds.** A default outcome after a deadline (for example, refund the buyer, or split 50/50) would fix this. It changes the contract, so it needs a spec update and a new deployment. Tracked in [#29](https://github.com/Ibk-Bless/FarmPay/issues/29).
-- **The arbiter is trusted.** There is no appeal and no multi-party arbitration.
+- **The arbiter is trusted** while its dispute window is open. There is no appeal and no multi-party arbitration. If it stays silent, the even split applies; it is not a ruling on who was right.
 - **Buyers must pre-fund the whole amount**, which suits buyers who already pay on delivery better than buyers who rely on supplier credit.
 - **Farmers need a Stellar wallet.** Cash-out to local bank or mobile money isn't built yet.

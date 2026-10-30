@@ -341,7 +341,7 @@ export default function LandingPage() {
               { title: 'Farmer Delivery Profile', desc: 'Public, shareable record of completed deliveries and payments' },
               { title: 'Buyer Dashboard', desc: 'Track all active and completed purchase orders' },
               { title: 'Farmer Dashboard', desc: 'Active orders, payment history, and delivery profile link' },
-              { title: 'Cooperative Arbitration', desc: 'Disputes are settled by the farmer\'s cooperative with a fair split' },
+              { title: 'Cooperative Arbitration', desc: 'Disputes are settled by the farmer\'s cooperative. If it stays silent, an even split settles it, so money is never stuck' },
             ].map((feature, idx) => (
               <div key={idx} className="bg-green-50 p-6 rounded-lg border border-green-100">
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>

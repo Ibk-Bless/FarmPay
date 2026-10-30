@@ -1,4 +1,10 @@
 #![no_std]
+// `create_order` takes the three parties, the amount and three time settings, which is one over
+// clippy's limit. They are separate arguments on purpose: they are the contract's public
+// interface, and a struct would make every client encode a nested map for no gain. The limit
+// is lifted crate-wide because Soroban's macros also generate a client and a spec function with
+// the same signature outside the impl block.
+#![allow(clippy::too_many_arguments)]
 
 //! FarmPay escrow: holds a buyer's USDC for a farm order and pays the farmer
 //! on confirmation, after the review window, or by arbiter decision.
@@ -23,6 +29,11 @@ const INSTANCE_TTL_EXTEND_TO: u32 = 90 * DAY_IN_LEDGERS;
 const ORDER_MIN_TTL: u32 = 30 * DAY_IN_LEDGERS;
 /// Extra time after an order's next deadline, so the next party can still act.
 const ORDER_TTL_BUFFER: u32 = 14 * DAY_IN_LEDGERS;
+
+/// How long the arbiter has to rule on a dispute, chosen by the buyer within these bounds.
+/// Long enough for a cooperative to investigate; short enough that money is never stuck for long.
+const MIN_DISPUTE_WINDOW: u64 = 24 * 60 * 60;
+const MAX_DISPUTE_WINDOW: u64 = 30 * 24 * 60 * 60;
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -61,6 +72,10 @@ pub struct Order {
     pub delivery_deadline: u64,
     pub review_window: u64,
     pub review_deadline: u64,
+    /// How long the arbiter has to rule once a dispute is opened.
+    pub dispute_window: u64,
+    /// When the arbiter's time runs out; 0 until a dispute is opened.
+    pub dispute_deadline: u64,
     pub status: OrderStatus,
 }
 
@@ -109,6 +124,7 @@ impl FarmPayEscrow {
         amount: i128,
         delivery_deadline: u64,
         review_window: u64,
+        dispute_window: u64,
     ) -> Result<u64, Error> {
         buyer.require_auth();
 
@@ -119,6 +135,9 @@ impl FarmPayEscrow {
             return Err(Error::InvalidParties);
         }
         if delivery_deadline <= env.ledger().timestamp() || review_window == 0 {
+            return Err(Error::InvalidDeadline);
+        }
+        if !(MIN_DISPUTE_WINDOW..=MAX_DISPUTE_WINDOW).contains(&dispute_window) {
             return Err(Error::InvalidDeadline);
         }
 
@@ -136,6 +155,8 @@ impl FarmPayEscrow {
             delivery_deadline,
             review_window,
             review_deadline: 0,
+            dispute_window,
+            dispute_deadline: 0,
             status: OrderStatus::Funded,
         };
         save(&env, &order);
@@ -209,7 +230,9 @@ impl FarmPayEscrow {
         Ok(())
     }
 
-    /// Buyer disputes the delivery while the review window is open.
+    /// Buyer disputes the delivery while the review window is open. This starts the arbiter's
+    /// clock: if no ruling comes before the dispute deadline, anyone can settle it with
+    /// `expire_dispute`.
     pub fn open_dispute(env: Env, order_id: u64, reason: String) -> Result<(), Error> {
         let mut order = load(&env, order_id)?;
         order.buyer.require_auth();
@@ -218,33 +241,46 @@ impl FarmPayEscrow {
             return Err(Error::TooLate);
         }
 
+        order.dispute_deadline = env
+            .ledger()
+            .timestamp()
+            .saturating_add(order.dispute_window);
         order.status = OrderStatus::Disputed;
         save(&env, &order);
         DisputeOpened { order_id, reason }.publish(&env);
         Ok(())
     }
 
-    /// Arbiter pays `farmer_amount` to the farmer and refunds the rest to the buyer.
+    /// Arbiter pays `farmer_amount` to the farmer and refunds the rest to the buyer. Must happen
+    /// before the dispute deadline; after it the default settlement applies instead.
     pub fn resolve_dispute(env: Env, order_id: u64, farmer_amount: i128) -> Result<(), Error> {
         let mut order = load(&env, order_id)?;
         order.arbiter.require_auth();
         expect_status(&order, OrderStatus::Disputed)?;
+        if env.ledger().timestamp() > order.dispute_deadline {
+            return Err(Error::TooLate);
+        }
         if farmer_amount < 0 || farmer_amount > order.amount {
             return Err(Error::InvalidSplit);
         }
 
-        let token = token_client(&env);
-        let contract = env.current_contract_address();
-        let buyer_amount = order.amount - farmer_amount;
-        if farmer_amount > 0 {
-            token.transfer(&contract, &order.farmer, &farmer_amount);
-        }
-        if buyer_amount > 0 {
-            token.transfer(&contract, &order.buyer, &buyer_amount);
+        settle(&env, &mut order, farmer_amount);
+        Ok(())
+    }
+
+    /// Anyone can settle a dispute the arbiter did not rule on in time: the order is split
+    /// evenly between farmer and buyer (an odd last unit goes to the buyer). This means a
+    /// missing arbiter can never leave funds locked, and neither side gains by hoping the
+    /// arbiter stays silent.
+    pub fn expire_dispute(env: Env, order_id: u64) -> Result<(), Error> {
+        let mut order = load(&env, order_id)?;
+        expect_status(&order, OrderStatus::Disputed)?;
+        if env.ledger().timestamp() <= order.dispute_deadline {
+            return Err(Error::TooEarly);
         }
 
-        order.status = OrderStatus::Resolved;
-        save(&env, &order);
+        let farmer_amount = order.amount / 2;
+        settle(&env, &mut order, farmer_amount);
         Ok(())
     }
 
@@ -292,7 +328,8 @@ fn order_ttl(env: &Env, order: &Order) -> u32 {
             order.delivery_deadline.saturating_add(order.review_window)
         }
         OrderStatus::Delivered => order.review_deadline,
-        // Disputes have no deadline; terminal orders are kept for history reads.
+        OrderStatus::Disputed => order.dispute_deadline,
+        // Terminal orders are kept for history reads.
         _ => now,
     };
     let ledgers = next_deadline.saturating_sub(now) / SECONDS_PER_LEDGER;
@@ -318,6 +355,22 @@ fn expect_status(order: &Order, status: OrderStatus) -> Result<(), Error> {
     } else {
         Err(Error::InvalidStatus)
     }
+}
+
+/// Pays `farmer_amount` to the farmer and the rest to the buyer, and closes the dispute.
+fn settle(env: &Env, order: &mut Order, farmer_amount: i128) {
+    let token = token_client(env);
+    let contract = env.current_contract_address();
+    let buyer_amount = order.amount - farmer_amount;
+    if farmer_amount > 0 {
+        token.transfer(&contract, &order.farmer, &farmer_amount);
+    }
+    if buyer_amount > 0 {
+        token.transfer(&contract, &order.buyer, &buyer_amount);
+    }
+
+    order.status = OrderStatus::Resolved;
+    save(env, order);
 }
 
 fn release_to_farmer(env: &Env, order: &mut Order) {

@@ -11,7 +11,7 @@ const STATUS_TEXT: Record<OrderStatus, string> = {
   Funded: 'Funds are locked. Waiting for the farmer to accept.',
   Accepted: 'The farmer accepted. Waiting for delivery.',
   Delivered: 'The farmer marked the order delivered. The buyer can confirm or dispute during the review window.',
-  Disputed: 'The buyer opened a dispute. Waiting for the cooperative to decide the split.',
+  Disputed: 'The buyer opened a dispute. Waiting for the cooperative to decide the split before the deadline below.',
   Released: 'Complete. The farmer was paid in full.',
   Refunded: 'Cancelled. The buyer was refunded in full.',
   Resolved: 'Dispute resolved. The cooperative split the funds between farmer and buyer.',
@@ -97,6 +97,9 @@ export default function OrderDetail() {
   const reviewOpen = order.status === 'Delivered' && nowSeconds <= order.reviewDeadline
   const reviewOver = order.status === 'Delivered' && nowSeconds > order.reviewDeadline
   const deliveryLate = order.status === 'Accepted' && nowSeconds > order.deliveryDeadline
+  // The cooperative can only rule up to the dispute deadline; after it anyone can settle by default.
+  const disputeOpen = order.status === 'Disputed' && nowSeconds <= order.disputeDeadline
+  const disputeOver = order.status === 'Disputed' && nowSeconds > order.disputeDeadline
   const disabled = busy || wrongNetwork
 
   const actions: ReactNode[] = []
@@ -128,6 +131,14 @@ export default function OrderDetail() {
     )
   }
 
+  if (address && disputeOver) {
+    actions.push(
+      <ActionButton key="expire" onClick={() => act('expire', { caller: address })} disabled={disabled}>
+        Settle by default (even split)
+      </ActionButton>,
+    )
+  }
+
   return (
     <Shell>
       <div className="flex items-start justify-between gap-4">
@@ -143,7 +154,11 @@ export default function OrderDetail() {
       </div>
 
       <StatusTrack status={order.status} />
-      <p role="status" className="mt-4 text-gray-700">{STATUS_TEXT[order.status]}</p>
+      <p role="status" className="mt-4 text-gray-700">
+        {disputeOver
+          ? 'The cooperative did not rule in time. Anyone can now settle the dispute: the funds are split evenly between farmer and buyer.'
+          : STATUS_TEXT[order.status]}
+      </p>
 
       <dl className="mt-6 grid sm:grid-cols-2 gap-4 bg-white border border-gray-200 rounded-xl p-6 text-sm">
         <Party label="Buyer" value={order.buyer} you={role === 'buyer'} />
@@ -162,6 +177,16 @@ export default function OrderDetail() {
             {reviewOpen && <span className="ml-2 text-green-700 font-medium">({timeLeft(order.reviewDeadline, now)} left)</span>}
           </dd>
         </div>
+        <div>
+          <dt className="text-gray-500">Dispute window</dt>
+          <dd className="text-gray-900">
+            {order.status === 'Disputed'
+              ? `The cooperative must rule by ${formatDate(order.disputeDeadline)}`
+              : `${order.disputeWindow / 86400} days for the cooperative to rule, if a dispute is opened`}
+            {disputeOpen && <span className="ml-2 text-green-700 font-medium">({timeLeft(order.disputeDeadline, now)} left)</span>}
+            {disputeOver && <span className="ml-2 text-amber-800 font-medium">(passed)</span>}
+          </dd>
+        </div>
       </dl>
 
       <section className="mt-6 bg-white border border-gray-200 rounded-xl p-6">
@@ -176,7 +201,7 @@ export default function OrderDetail() {
           <p className="text-gray-600 mt-2 text-sm">Connect your wallet to act on this order.</p>
         ) : (
           <>
-            {!role && !reviewOver && (
+            {!role && !reviewOver && !disputeOver && (
               <p className="text-gray-600 mt-2 text-sm">Your connected account is not part of this order.</p>
             )}
             {actions.length > 0 && <div className="mt-4 flex flex-wrap gap-3">{actions}</div>}
@@ -197,7 +222,7 @@ export default function OrderDetail() {
               </div>
             )}
 
-            {role === 'arbiter' && order.status === 'Disputed' && (
+            {role === 'arbiter' && disputeOpen && (
               <div className="mt-4">
                 <label htmlFor="split" className="block text-sm font-medium text-gray-700 mb-1">
                   Farmer's share (USDC, out of {formatUsdc(order.amount)})
@@ -218,7 +243,7 @@ export default function OrderDetail() {
               </div>
             )}
 
-            {role && actions.length === 0 && !(role === 'buyer' && reviewOpen) && !(role === 'arbiter' && order.status === 'Disputed') && (
+            {role && actions.length === 0 && !(role === 'buyer' && reviewOpen) && !(role === 'arbiter' && disputeOpen) && (
               <p className="text-gray-600 mt-2 text-sm">Nothing for you to do right now.</p>
             )}
           </>

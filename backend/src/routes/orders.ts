@@ -7,11 +7,17 @@ type Role = 'buyer' | 'farmer' | 'arbiter'
 // Limits keep every value inside what the contract can encode, and keep on-chain data small.
 const MAX_ORDER_ID = 2n ** 64n - 1n // u64
 const MAX_REVIEW_WINDOW_HOURS = 24 * 365
+// The contract enforces 1 to 30 days; checking here gives a clear error before any network call.
+const MIN_DISPUTE_WINDOW_DAYS = 1
+const MAX_DISPUTE_WINDOW_DAYS = 30
+const DEFAULT_DISPUTE_WINDOW_DAYS = 7
 const MAX_REASON_LENGTH = 500
 
 interface ActionSpec {
   method: string
   signer: Role
+  /** The contract needs no signature from a party, so any account may pay the fee (`caller`). */
+  anyone?: boolean
   args?: (body: Record<string, unknown>) => xdr.ScVal[]
 }
 
@@ -21,12 +27,14 @@ const ACTIONS: Record<string, ActionSpec> = {
   cancel: { method: 'cancel_order', signer: 'buyer' },
   deliver: { method: 'mark_delivered', signer: 'farmer' },
   confirm: { method: 'confirm_delivery', signer: 'buyer' },
-  claim: { method: 'claim_payment', signer: 'farmer' },
+  claim: { method: 'claim_payment', signer: 'farmer', anyone: true },
   dispute: {
     method: 'open_dispute',
     signer: 'buyer',
     args: (body) => [nativeToScVal(parseReason(body), { type: 'string' })],
   },
+  // Settles a dispute the arbiter did not rule on in time; like `claim`, anyone may trigger it.
+  expire: { method: 'expire_dispute', signer: 'buyer', anyone: true },
   resolve: {
     method: 'resolve_dispute',
     signer: 'arbiter',
@@ -61,6 +69,19 @@ export function ordersRouter(escrow: EscrowService): Router {
         )
       }
 
+      const disputeWindowDays = body.disputeWindowDays ?? DEFAULT_DISPUTE_WINDOW_DAYS
+      if (
+        typeof disputeWindowDays !== 'number' ||
+        !Number.isInteger(disputeWindowDays) ||
+        disputeWindowDays < MIN_DISPUTE_WINDOW_DAYS ||
+        disputeWindowDays > MAX_DISPUTE_WINDOW_DAYS
+      ) {
+        throw new EscrowError(
+          'INVALID_DEADLINE',
+          `disputeWindowDays must be a whole number between ${MIN_DISPUTE_WINDOW_DAYS} and ${MAX_DISPUTE_WINDOW_DAYS}`,
+        )
+      }
+
       const xdr = await escrow.buildCreateOrder({
         buyer: requireAccount(body, 'buyer'),
         farmer: requireAccount(body, 'farmer'),
@@ -68,6 +89,7 @@ export function ordersRouter(escrow: EscrowService): Router {
         amount: parseUsdc(requireString(body, 'amount')),
         deliveryDeadline: Math.floor(deadline / 1000),
         reviewWindow: reviewWindowHours * 3600,
+        disputeWindow: disputeWindowDays * 24 * 3600,
       })
       res.json({ action: 'create', xdr })
     }),
@@ -90,10 +112,10 @@ export function ordersRouter(escrow: EscrowService): Router {
       const orderId = parseOrderId(req.params.orderId)
       const body = requireObject(req.body)
       const args = spec.args?.(body)
-      const caller = req.params.action === 'claim' && body.caller ? requireAccount(body, 'caller') : undefined
+      const caller = spec.anyone && body.caller ? requireAccount(body, 'caller') : undefined
 
       const order = await escrow.getOrder(orderId)
-      // claim_payment needs no particular signer; anyone may pay the fee to trigger it.
+      // claim and expire need no particular signer; anyone may pay the fee to trigger them.
       const signer = caller ?? partyOf(order, spec.signer)
 
       const xdr = await escrow.buildOrderCall(signer, spec.method, orderId, args)
