@@ -6,6 +6,18 @@
 - [Rust](https://rustup.rs/) with the `wasm32v1-none` target (`rustup target add wasm32v1-none`)
 - [Stellar CLI](https://developers.stellar.org/docs/tools/cli)
 
+## Just want to click around?
+
+You don't need a wallet, Rust or testnet accounts to try the interface:
+
+```bash
+cd frontend
+npm install
+npm run dev:demo      # http://localhost:3000
+```
+
+This is the interactive demo: the same app running against an in-browser simulation of the contract (`frontend/src/demo/`). Use the **View as** menu to act as the buyer, farmer or cooperative, and **Skip ahead 1 day** to see what happens when the delivery deadline or review window passes. It is also the quickest way to work on UI changes. For the real thing on testnet, continue below.
+
 ## One-command setup
 
 ```bash

@@ -4,6 +4,8 @@ import AppHeader from '../components/AppHeader'
 import WalletButton from '../components/WalletButton'
 import { api } from '../lib/api'
 import { useWallet } from '../wallet/context'
+import { DEMO_ACCOUNTS } from '../demo/accounts'
+import { isDemo } from '../lib/mode'
 import { STEP_LABELS, useTransaction } from '../wallet/useTransaction'
 
 const ACCOUNT_PATTERN = /^G[A-Z2-7]{55}$/
@@ -25,9 +27,10 @@ export default function OrderCreation() {
   const { status, address, wrongNetwork } = useWallet()
   const { run, step, busy, error } = useTransaction()
 
-  const [farmer, setFarmer] = useState('')
-  const [arbiter, setArbiter] = useState('')
-  const [amount, setAmount] = useState('')
+  // The demo prefills its fake farmer and cooperative so a visitor can create an order in one click.
+  const [farmer, setFarmer] = useState(isDemo ? DEMO_ACCOUNTS.farmer : '')
+  const [arbiter, setArbiter] = useState(isDemo ? DEMO_ACCOUNTS.cooperative : '')
+  const [amount, setAmount] = useState(isDemo ? '250' : '')
   const [deliveryDate, setDeliveryDate] = useState(defaultDeliveryDate)
   const [reviewWindowHours, setReviewWindowHours] = useState(72)
   const [formError, setFormError] = useState<string | null>(null)

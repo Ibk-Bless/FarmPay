@@ -33,6 +33,16 @@ A thin, keyless layer between the app and the network:
 ### Frontend (`frontend`)
 React app for the three roles: buyer, farmer and cooperative. It shows order state and sends each action to the user's wallet for signing.
 
+## Interactive demo
+
+`npm run dev:demo` (or `build:demo`) builds the same frontend against `frontend/src/demo/` instead of the backend and Freighter:
+
+- `demoApi.ts` implements the API client's interface in the browser. It applies the contract's rules and returns the real API's error codes, so the UI behaves as it does on testnet. State lives in `sessionStorage`
+- `DemoProvider.tsx` replaces the wallet: "connecting" is choosing a role
+- a controllable clock (`lib/clock.ts`) lets visitors skip ahead to see deadlines pass
+
+It is selected by `VITE_DEMO` at build time and the real build contains none of it (CI checks). If you change a contract rule, change `checkAction` in `demoApi.ts` too.
+
 ## Order lifecycle
 
 ```

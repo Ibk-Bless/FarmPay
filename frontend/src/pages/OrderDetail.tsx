@@ -4,6 +4,7 @@ import { CheckCircle, Circle, Copy, XCircle } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import { api, errorMessage, type Order, type OrderAction, type OrderStatus } from '../lib/api'
 import { formatDate, formatUsdc, shortAddress, timeLeft } from '../lib/format'
+import { useNow } from '../lib/clock'
 import { useWallet } from '../wallet/context'
 import { STEP_LABELS, useTransaction } from '../wallet/useTransaction'
 
@@ -26,7 +27,7 @@ export default function OrderDetail() {
 
   const [order, setOrder] = useState<Order | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [now, setNow] = useState(() => Date.now())
+  const now = useNow()
   const [reason, setReason] = useState('')
   const [farmerAmount, setFarmerAmount] = useState('')
   const [copied, setCopied] = useState(false)
@@ -44,11 +45,6 @@ export default function OrderDetail() {
     load()
   }, [load])
 
-  // Keep countdowns and time-based actions current.
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30_000)
-    return () => clearInterval(timer)
-  }, [])
 
   // The button that was clicked is disabled (and often removed) while the transaction runs, so
   // keyboard focus would fall back to the top of the page. Return it to the actions section.
