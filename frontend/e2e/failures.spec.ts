@@ -88,3 +88,21 @@ test('an unexpected rendering crash shows a recovery screen, not a blank page', 
   await expect(page.getByText('Your funds are not affected')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Reload the page' })).toBeVisible()
 })
+
+test('after a failed action the order is refreshed to its true state', async ({ openAs, api }) => {
+  const { id } = api.seed()
+  const farmer = await openAs('farmer', `/order/${id}`)
+  await expect(farmer.getByRole('button', { name: 'Accept order' })).toBeVisible()
+
+  // Meanwhile the order moved on (for example the farmer's first attempt actually went through),
+  // so the contract refuses a second accept.
+  api.orders.get(id)!.status = 'Accepted'
+  api.failNextBuild(409, 'INVALID_STATUS')
+  await farmer.getByRole('button', { name: 'Accept order' }).click()
+
+  await expect(farmer.getByRole('alert')).toContainText('not available for the order in its current state')
+  // The page now shows the real status and the next step, not the stale "Accept order".
+  await expect(farmer.getByText('The farmer accepted. Waiting for delivery.')).toBeVisible()
+  await expect(farmer.getByRole('button', { name: 'Mark as delivered' })).toBeVisible()
+  await expect(farmer.getByRole('button', { name: 'Accept order' })).toHaveCount(0)
+})
