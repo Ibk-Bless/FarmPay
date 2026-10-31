@@ -35,7 +35,8 @@ check() {
   fi
 }
 
-order() { echo "{\"buyer\":\"$B\",\"farmer\":\"$F\",\"arbiter\":\"$C\",\"amount\":\"$1\",\"deliveryDeadline\":\"${2:-2030-01-01T00:00:00Z}\",\"reviewWindowHours\":${3:-72}}"; }
+# order <amount> [deadline] [review window hours] [dispute window days: omit for the default]
+order() { echo "{\"buyer\":\"$B\",\"farmer\":\"$F\",\"arbiter\":\"$C\",\"amount\":\"$1\",\"deliveryDeadline\":\"${2:-2030-01-01T00:00:00Z}\",\"reviewWindowHours\":${3:-72}${4:+,\"disputeWindowDays\":$4}}"; }
 
 echo "Create order"
 check "amount over the i128 limit"            /api/orders "$(order 170141183460469231731687303715884105728)" INVALID_AMOUNT
@@ -47,6 +48,11 @@ check "review window overflows u64"           /api/orders "$(order 100 2030-01-0
 check "review window is fractional"           /api/orders "$(order 100 2030-01-01T00:00:00Z 1.5)" INVALID_DEADLINE
 check "review window is zero"                 /api/orders "$(order 100 2030-01-01T00:00:00Z 0)" INVALID_DEADLINE
 check "review window is a string"             /api/orders "$(order 100 2030-01-01T00:00:00Z '"72"')" INVALID_DEADLINE
+check "dispute window is zero"                /api/orders "$(order 100 2030-01-01T00:00:00Z 72 0)" INVALID_DEADLINE
+check "dispute window is over 30 days"       /api/orders "$(order 100 2030-01-01T00:00:00Z 72 31)" INVALID_DEADLINE
+check "dispute window is fractional"          /api/orders "$(order 100 2030-01-01T00:00:00Z 72 1.5)" INVALID_DEADLINE
+check "dispute window is a string"            /api/orders "$(order 100 2030-01-01T00:00:00Z 72 '"7"')" INVALID_DEADLINE
+check "dispute window overflows u64"          /api/orders "$(order 100 2030-01-01T00:00:00Z 72 10000000000000000)" INVALID_DEADLINE
 check "deadline in the past (1960)"           /api/orders "$(order 100 1960-01-01T00:00:00Z)" INVALID_DEADLINE
 check "deadline is not a date"                /api/orders "$(order 100 tomorrow)" INVALID_DEADLINE
 check "buyer is a contract id"                /api/orders "{\"buyer\":\"$CONTRACT\",\"farmer\":\"$F\",\"arbiter\":\"$C\",\"amount\":\"100\",\"deliveryDeadline\":\"2030-01-01T00:00:00Z\",\"reviewWindowHours\":72}" INVALID_ADDRESS
@@ -64,6 +70,7 @@ check "resolve amount is negative"            /api/orders/1/resolve '{"farmerAmo
 check "resolve amount is not a number"        /api/orders/1/resolve '{"farmerAmount":"abc"}' INVALID_AMOUNT
 check "resolve amount over the i128 limit"    /api/orders/1/resolve '{"farmerAmount":"99999999999999999999999999999999999999999"}' INVALID_AMOUNT
 check "claim caller is not an address"        /api/orders/1/claim '{"caller":"nope"}' INVALID_ADDRESS
+check "expire caller is not an address"       /api/orders/1/expire '{"caller":"nope"}' INVALID_ADDRESS
 
 echo "Submit"
 check "signedXdr is garbage"                  /api/transactions '{"signedXdr":"AAAA"}' INVALID_TRANSACTION

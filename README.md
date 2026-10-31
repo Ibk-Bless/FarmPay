@@ -28,7 +28,7 @@ v1 supports exactly one flow: **a buyer purchasing from a farmer who belongs to 
 ```
 Funded ──accept──▶ Accepted ──deliver──▶ Delivered ──confirm / window expires──▶ Released
   │                   │                     │
-  │ cancel            │ cancel (late)       └──dispute──▶ Disputed ──cooperative splits──▶ Resolved
+  │ cancel            │ cancel (late)       └──dispute──▶ Disputed ──cooperative splits, or 50/50 if it stays silent──▶ Resolved
   ▼                   ▼
 Refunded           Refunded
 ```
@@ -37,7 +37,7 @@ Refunded           Refunded
 2. **Farmer accepts.** Until then, the buyer can cancel for a full refund.
 3. **Farmer marks the order delivered.** The review window starts.
 4. **The buyer confirms delivery and the farmer is paid.** If the buyer does nothing before the window ends, anyone can trigger the release to the farmer.
-5. **The buyer can open a dispute within the window instead.** The cooperative then decides the split, from 0–100% to the farmer, with the rest refunded to the buyer.
+5. **The buyer can open a dispute within the window instead.** The cooperative then decides the split, from 0–100% to the farmer, with the rest refunded to the buyer. It has a deadline (1 to 30 days, chosen when the order is created): if it stays silent, anyone can settle the order with an even split, so a missing cooperative can never lock the funds.
 6. **If the farmer accepts but misses the delivery deadline,** the buyer can cancel for a full refund.
 
 Every order and its outcome is recorded on-chain, which gives each farmer a verifiable delivery history.
@@ -84,8 +84,7 @@ The interactive demo runs the real app against an in-browser simulation of the e
 We list these openly because they shape what we build next:
 
 - **Buyers have to pre-fund the order.** That's a real cost for the buyer. FarmPay is aimed first at buyers who already pay cash on delivery, such as aggregators and processors buying through cooperatives. It isn't yet aimed at buyers who rely on supplier credit.
-- **The arbiter is trusted.** A dishonest cooperative could rule unfairly. The arbiter's address is fixed when the order is created, so both parties agree to it up front.
-- **A dispute with an unresponsive arbiter locks the funds.** A disputed order has no timeout today, so if the cooperative disappears the order cannot complete. A default outcome after a deadline is planned ([#29](https://github.com/Ibk-Bless/FarmPay/issues/29)).
+- **The arbiter is trusted.** A dishonest cooperative could rule unfairly. The arbiter's address is fixed when the order is created, so both parties agree to it up front. If it stays silent past the dispute deadline, an even split applies instead.
 - **Farmers need a Stellar wallet.** In v1 we assume the cooperative helps members set one up. Mobile-money cash-out comes with anchor integration.
 
 ## Tech Stack

@@ -20,6 +20,7 @@ Requests that break a limit are rejected with a `400` before anything is sent to
 | `amount`, `farmerAmount` | Decimal string, at most 7 decimals, at most the contract's 128-bit limit |
 | `deliveryDeadline` | ISO 8601 date in the future |
 | `reviewWindowHours` | Whole **number** (not a string) from 1 to 8,760 (one year) |
+| `disputeWindowDays` | Optional whole **number** from 1 to 30 (default 7): how long the cooperative has to rule once a dispute is opened. After that, anyone can settle it with an even split |
 | `reason` | Non-empty string, at most 500 characters (it is stored on-chain) |
 | `:orderId` | Positive integer within the contract's 64-bit limit |
 | Request body | A JSON object, at most 100 KB |
@@ -49,7 +50,8 @@ Every response includes an `X-Request-Id` header (also exposed to browsers throu
   "arbiter": "GBPD...",
   "amount": "1840.50",
   "deliveryDeadline": "2026-10-14T00:00:00Z",
-  "reviewWindowHours": 72
+  "reviewWindowHours": 72,
+  "disputeWindowDays": 7
 }
 ```
 
@@ -77,11 +79,13 @@ Reads the order directly from the contract.
   "deliveryDeadline": 1792195200,
   "reviewWindow": 259200,
   "reviewDeadline": 1791628672,
+  "disputeWindow": 604800,
+  "disputeDeadline": 0,
   "status": "Delivered"
 }
 ```
 
-Timestamps are Unix seconds (ledger time). `reviewDeadline` is `0` until the farmer marks the order delivered.
+Timestamps are Unix seconds (ledger time). `reviewDeadline` is `0` until the farmer marks the order delivered, and `disputeDeadline` is `0` until a dispute is opened.
 
 `status` is one of `Funded`, `Accepted`, `Delivered`, `Disputed`, `Released`, `Refunded` or `Resolved`.
 
@@ -99,7 +103,8 @@ Each action maps to one contract method. The signer comes from the order, so the
 | `confirm` | buyer | `confirm_delivery` | `Delivered` | — |
 | `claim` | farmer, or `caller` | `claim_payment` | `Delivered`, after the review deadline | `{ "caller": "G..." }` (optional) |
 | `dispute` | buyer | `open_dispute` | `Delivered`, before the review deadline | `{ "reason": "Short by 200kg" }` |
-| `resolve` | arbiter | `resolve_dispute` | `Disputed` | `{ "farmerAmount": "800" }` |
+| `resolve` | arbiter | `resolve_dispute` | `Disputed`, up to `disputeDeadline` | `{ "farmerAmount": "800" }` |
+| `expire` | anyone (`caller`) | `expire_dispute` | `Disputed`, after `disputeDeadline` | `{ "caller": "G..." }` (optional) |
 
 Response:
 

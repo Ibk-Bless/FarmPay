@@ -48,7 +48,8 @@ It is selected by `VITE_DEMO` at build time and the real build contains none of 
 ```
 Funded ──accept──▶ Accepted ──deliver──▶ Delivered ──confirm / claim──▶ Released
   │                   │                     │
-  │ cancel            │ cancel (late)       └──dispute──▶ Disputed ──resolve──▶ Resolved
+  │ cancel            │ cancel (late)       └──dispute──▶ Disputed ──resolve (in time)──▶ Resolved
+  ▼                   ▼                                         └──expire (after the deadline, 50/50)──▶ Resolved
   ▼                   ▼
 Refunded           Refunded
 ```
@@ -61,7 +62,8 @@ Refunded           Refunded
 | Confirm | Buyer | USDC from the contract to the farmer |
 | Claim (after window) | Anyone | USDC from the contract to the farmer |
 | Dispute | Buyer | — |
-| Resolve | Cooperative | Split between the farmer and the buyer |
+| Resolve | Cooperative | Split between the farmer and the buyer (before the dispute deadline) |
+| Settle by default | Anyone | Even split, once the dispute deadline has passed |
 | Cancel | Buyer | USDC from the contract back to the buyer |
 
 ## Trust model
@@ -70,7 +72,8 @@ Refunded           Refunded
 |---|---|---|
 | Buyer | Confirm, dispute within the window, cancel before acceptance or after a missed deadline | Take funds back once the farmer has delivered |
 | Farmer | Accept, mark delivered, claim after the window | Get paid without delivering (the buyer can dispute) |
-| Cooperative | Split the funds of a **disputed** order | Touch undisputed orders, or pay out more than the order amount |
+| Cooperative | Split the funds of a **disputed** order, before its deadline | Touch undisputed orders, pay out more than the order amount, or rule after the deadline |
+| Anyone | Release payment after the review window, settle an expired dispute | Choose the outcome: both are fixed by the contract |
 | FarmPay | Build and relay transactions | Sign for anyone, or move any funds |
 
 The relay rule (`POST /api/transactions` only forwards a single call to the escrow contract) is checked in CI against payments, account merges, multi-operation transactions, calls to other contracts, contract creation and fee-bump wrappers: `backend/scripts/check-relay-rules.mjs`.

@@ -25,6 +25,8 @@ export interface MockOrder {
   deliveryDeadline: number
   reviewWindow: number
   reviewDeadline: number
+  disputeWindow: number
+  disputeDeadline: number
   status: Status
 }
 
@@ -60,6 +62,8 @@ export class MockApi {
       deliveryDeadline: now() + 7 * 86400,
       reviewWindow: 72 * 3600,
       reviewDeadline: 0,
+      disputeWindow: 7 * 86400,
+      disputeDeadline: 0,
       status: 'Funded',
       ...overrides,
     }
@@ -113,6 +117,7 @@ export class MockApi {
           amount: String(input.amount),
           deliveryDeadline: Math.floor(Date.parse(String(input.deliveryDeadline)) / 1000),
           reviewWindow: Number(input.reviewWindowHours) * 3600,
+          disputeWindow: Number(input.disputeWindowDays ?? 7) * 86400,
         })
         return reply(200, { hash: 'mockhash', orderId: order.id })
       }
@@ -131,9 +136,11 @@ export class MockApi {
       claim: 'Released',
       dispute: 'Disputed',
       resolve: 'Resolved',
+      expire: 'Resolved',
       cancel: 'Refunded',
     }
     if (action === 'deliver') order.reviewDeadline = now() + order.reviewWindow
+    if (action === 'dispute') order.disputeDeadline = now() + order.disputeWindow
     order.status = next[action]
   }
 }

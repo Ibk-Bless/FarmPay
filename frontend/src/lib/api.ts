@@ -24,6 +24,8 @@ export interface Order {
   deliveryDeadline: number
   reviewWindow: number
   reviewDeadline: number
+  disputeWindow: number
+  disputeDeadline: number
   status: OrderStatus
 }
 
@@ -34,9 +36,11 @@ export interface CreateOrderInput {
   amount: string
   deliveryDeadline: string
   reviewWindowHours: number
+  /** How long the cooperative has to rule on a dispute (1 to 30; the API defaults to 7). */
+  disputeWindowDays?: number
 }
 
-export type OrderAction = 'accept' | 'cancel' | 'deliver' | 'confirm' | 'claim' | 'dispute' | 'resolve'
+export type OrderAction = 'accept' | 'cancel' | 'deliver' | 'confirm' | 'claim' | 'dispute' | 'resolve' | 'expire'
 
 export interface BuiltTransaction {
   xdr: string
