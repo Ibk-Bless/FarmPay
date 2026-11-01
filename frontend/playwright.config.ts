@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 const PORT = 4173
 const DEMO_PORT = 4174
+const PAGES_PORT = 4175
 
 // End-to-end tests run the real app in a browser with a fake Freighter wallet
 // and a mocked API (see e2e/fixtures.ts), so no backend or testnet is needed.
@@ -23,6 +24,12 @@ export default defineConfig({
       testDir: './e2e-demo',
       use: { ...devices['Desktop Chrome'], baseURL: `http://localhost:${DEMO_PORT}` },
     },
+    {
+      // The demo as GitHub Pages serves it: a production build under the /FarmPay/ sub-path.
+      name: 'pages',
+      testDir: './e2e-pages',
+      use: { ...devices['Desktop Chrome'], baseURL: `http://localhost:${PAGES_PORT}/FarmPay/` },
+    },
   ],
   webServer: [
     {
@@ -34,6 +41,14 @@ export default defineConfig({
       command: `npm run dev:demo -- --port ${DEMO_PORT} --strictPort`,
       url: `http://localhost:${DEMO_PORT}`,
       reuseExistingServer: !process.env.CI,
+    },
+    {
+      // Built the same way as .github/workflows/pages.yml, then served like a static host would.
+      // VITE_BASE must reach both steps, so it is set for the whole shell command.
+      command: `VITE_BASE=/FarmPay/ sh -c 'npm run build:demo && npx vite preview --mode demo --port ${PAGES_PORT} --strictPort'`,
+      url: `http://localhost:${PAGES_PORT}/FarmPay/`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 180_000,
     },
   ],
 })

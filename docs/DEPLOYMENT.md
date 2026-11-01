@@ -79,6 +79,20 @@ cd frontend
 VITE_BASE=/FarmPay/ npm run build:demo     # output in frontend/dist/
 ```
 
+#### Publishing it automatically on GitHub Pages
+
+`.github/workflows/pages.yml` builds the demo and publishes it to `https://<owner>.github.io/<repository>/` on every push to `main`. **It does nothing until you opt in**, so it never fails or publishes by accident:
+
+1. **Settings → Pages → Build and deployment → Source:** choose **GitHub Actions**
+2. **Settings → Secrets and variables → Actions → Variables:** add `DEPLOY_DEMO` with the value `true`
+3. Push to `main`, or run the **Publish demo** workflow from the Actions tab
+
+To stop publishing, delete the `DEPLOY_DEMO` variable (the site stays up until you unpublish it under Settings → Pages).
+
+What the workflow can do: the build job only reads the repository. Only the deploy job has write access, and only to Pages (`pages: write`, plus `id-token: write`, which Pages uses to prove the deployment came from this repository). Both actions it uses are pinned to full commit hashes. The published site contains only the simulated demo: there is no backend, no wallet and no key in it.
+
+The `pages` test project (`frontend/e2e-pages`) builds the demo exactly as the workflow does and serves it under `/<repository>/`, so a broken asset path fails CI instead of publishing a blank page.
+
 **Order matters (real app).** Single-page apps usually need a catch-all rule that serves `index.html` for unknown paths. Put the `/api` rule *before* that catch-all, or `/api/*` will return the app's HTML instead of JSON. The app handles this without crashing, showing "The FarmPay server sent an unexpected response", but nothing will work until the rule order is fixed. You can check with:
 
 ```bash
