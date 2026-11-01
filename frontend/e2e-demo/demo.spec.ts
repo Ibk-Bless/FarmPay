@@ -99,6 +99,69 @@ test('time travel: after the review window the farmer can claim and the buyer ca
   await act(page, 'Release payment to farmer', 'Complete. The farmer was paid in full.')
 })
 
+// The dispute deadline: the cooperative can rule until it, and after it anyone can settle evenly.
+const reachDispute = async (page: Page) => {
+  await page.goto('/#/order/3')
+  await as(page, 'Farmer')
+  await act(page, 'Accept order', 'The farmer accepted')
+  await act(page, 'Mark as delivered', /marked the order delivered/)
+  await as(page, 'Buyer')
+  await page.getByLabel(/Open a dispute/).fill('Short by 200kg')
+  await act(page, 'Open dispute', 'The buyer opened a dispute')
+}
+const skip = async (page: Page, days: number) => {
+  for (let day = 0; day < days; day++) await page.getByRole('button', { name: 'Skip ahead 1 day' }).click()
+}
+
+test('a dispute shows the deadline, and nobody can settle by default while it is open', async ({ page }) => {
+  await reachDispute(page)
+  await expect(page.getByText(/The cooperative must rule by/)).toBeVisible()
+  await expect(page.getByText(/\(6d 23h left\)|\(7d 0h left\)/)).toBeVisible()
+  for (const role of ['Buyer', 'Farmer', 'Visitor (no wallet)'] as const) {
+    await as(page, role)
+    await expect(page.getByRole('button', { name: 'Settle by default (even split)' })).toHaveCount(0)
+  }
+})
+
+test('the cooperative can rule right up to the deadline', async ({ page }) => {
+  await reachDispute(page)
+  await skip(page, 6)
+  await as(page, 'Cooperative (arbiter)')
+  await page.getByLabel(/Farmer's share/).fill('1000')
+  await act(page, 'Resolve dispute', 'Dispute resolved')
+})
+
+test('after the deadline the cooperative cannot rule and anyone can settle evenly', async ({ page }) => {
+  await reachDispute(page)
+  await skip(page, 8)
+
+  await as(page, 'Cooperative (arbiter)')
+  await expect(page.getByLabel(/Farmer's share/)).toHaveCount(0)
+  await expect(page.getByText('(passed)')).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'The cooperative did not rule in time' })).toBeVisible()
+
+  // Even someone with no part in the order (no wallet role) can settle it once a role is chosen.
+  await as(page, 'Buyer')
+  await act(page, 'Settle by default (even split)', 'Dispute resolved')
+})
+
+test('the buyer chooses the dispute window, and a 1-day window expires after a day', async ({ page }) => {
+  await page.goto('/#/order/create')
+  await page.getByLabel('Time for the cooperative to decide a dispute').selectOption('1')
+  await page.getByRole('button', { name: 'Lock funds and create order' }).click()
+  await expect(page.getByText('1 days for the cooperative to rule, if a dispute is opened')).toBeVisible()
+
+  await as(page, 'Farmer')
+  await act(page, 'Accept order', 'The farmer accepted')
+  await act(page, 'Mark as delivered', /marked the order delivered/)
+  await as(page, 'Buyer')
+  await page.getByLabel(/Open a dispute/).fill('Wrong grade')
+  await act(page, 'Open dispute', 'The buyer opened a dispute')
+
+  await skip(page, 2)
+  await act(page, 'Settle by default (even split)', 'Dispute resolved')
+})
+
 test('the buyer can cancel an accepted order once its delivery deadline has passed', async ({ page }) => {
   await page.goto('/#/order/3')
   await as(page, 'Farmer')

@@ -55,8 +55,10 @@ export default function OrderDetail() {
     if (result) {
       setReason('')
       setFarmerAmount('')
-      await load()
     }
+    // Reload either way: after a failure the order may still have changed (another party acted
+    // first, or the transaction went through but its confirmation was lost), so show the truth.
+    await load()
     actionsHeading.current?.focus()
   }
 

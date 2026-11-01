@@ -45,6 +45,10 @@ export default function DemoBar() {
               Deliver an order and do nothing as the buyer, then <strong>skip ahead 3 days</strong>: the farmer can
               now claim payment, and the buyer can no longer dispute.
             </li>
+            <li>
+              Open a dispute and have nobody rule, then <strong>skip ahead past the dispute deadline</strong> (7 days
+              by default): the cooperative can no longer rule, and anyone can settle it with an even split.
+            </li>
             <li>As the <strong>Buyer</strong>, create your own order from the header.</li>
           </ol>
         </details>

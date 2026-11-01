@@ -9,9 +9,13 @@ import { ApiError } from '../lib/errors'
 import { clock } from '../lib/clock'
 import { DEMO_ACCOUNTS } from './accounts'
 
-const STORAGE_KEY = 'farmpay:demo:v1'
+// Bumped when the shape of a stored order changes, so an old browser session starts fresh.
+const STORAGE_KEY = 'farmpay:demo:v2'
 const DAY = 24 * 60 * 60
 const MAX_REVIEW_WINDOW_HOURS = 24 * 365
+const MIN_DISPUTE_WINDOW_DAYS = 1
+const MAX_DISPUTE_WINDOW_DAYS = 30
+const DEFAULT_DISPUTE_WINDOW_DAYS = 7
 const MAX_REASON_LENGTH = 500
 const ADDRESS = /^G[A-Z2-7]{55}$/
 
@@ -33,6 +37,8 @@ function seed(): DemoState {
     deliveryDeadline: t + 7 * DAY,
     reviewWindow: 3 * DAY,
     reviewDeadline: 0,
+    disputeWindow: 7 * DAY,
+    disputeDeadline: 0,
     ...o,
   })
   return {
@@ -40,7 +46,7 @@ function seed(): DemoState {
     nextId: 4,
     orders: [
       order({ id: '1', amount: '125.5', status: 'Released', deliveryDeadline: t - 6 * DAY, reviewDeadline: t - 2 * DAY }),
-      order({ id: '2', amount: '300', status: 'Resolved', deliveryDeadline: t - 5 * DAY, reviewDeadline: t - 1 * DAY }),
+      order({ id: '2', amount: '300', status: 'Resolved', deliveryDeadline: t - 5 * DAY, reviewDeadline: t - 4 * DAY, disputeDeadline: t + 2 * DAY }),
       order({ id: '3', amount: '1840.5', status: 'Funded' }),
     ],
   }
@@ -137,9 +143,16 @@ function checkAction(order: Order, action: OrderAction, body: Record<string, str
     case 'resolve': {
       const amount = parseUsdc(body.farmerAmount ?? '')
       expectStatus(order, 'Disputed')
+      // The cooperative can only rule up to the dispute deadline.
+      if (now > order.disputeDeadline) throw new ApiError('TOO_LATE', 'Too late')
       if (amount > parseUsdc(order.amount)) throw new ApiError('INVALID_SPLIT', 'Split is larger than the order')
       return
     }
+    case 'expire':
+      // Settling by default is only possible once the cooperative's time has run out.
+      expectStatus(order, 'Disputed')
+      if (now <= order.disputeDeadline) throw new ApiError('TOO_EARLY', 'Too early')
+      return
   }
 }
 
@@ -151,6 +164,7 @@ const NEXT_STATUS: Record<OrderAction, OrderStatus> = {
   claim: 'Released',
   dispute: 'Disputed',
   resolve: 'Resolved',
+  expire: 'Resolved',
 }
 
 // ---------- amounts (7 decimals, like USDC on Stellar) ----------
@@ -207,6 +221,10 @@ export const demoApi = {
     if (!Number.isInteger(hours) || hours < 1 || hours > MAX_REVIEW_WINDOW_HOURS) {
       throw new ApiError('INVALID_DEADLINE', 'Invalid review window')
     }
+    const days = input.disputeWindowDays ?? DEFAULT_DISPUTE_WINDOW_DAYS
+    if (!Number.isInteger(days) || days < MIN_DISPUTE_WINDOW_DAYS || days > MAX_DISPUTE_WINDOW_DAYS) {
+      throw new ApiError('INVALID_DEADLINE', 'Invalid dispute window')
+    }
     return issue({ kind: 'create', input })
   },
 
@@ -233,6 +251,8 @@ export const demoApi = {
         deliveryDeadline: Math.floor(Date.parse(input.deliveryDeadline) / 1000),
         reviewWindow: input.reviewWindowHours * 3600,
         reviewDeadline: 0,
+        disputeWindow: (input.disputeWindowDays ?? DEFAULT_DISPUTE_WINDOW_DAYS) * DAY,
+        disputeDeadline: 0,
         status: 'Funded',
       }
       state().orders.push(order)
@@ -245,6 +265,7 @@ export const demoApi = {
     checkAction(order, tx.action, tx.body)
     order.status = NEXT_STATUS[tx.action]
     if (tx.action === 'deliver') order.reviewDeadline = nowSeconds() + order.reviewWindow
+    if (tx.action === 'dispute') order.disputeDeadline = nowSeconds() + order.disputeWindow
     save()
     return { hash: fakeHash() }
   },
