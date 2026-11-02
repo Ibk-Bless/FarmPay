@@ -30,7 +30,7 @@ Open-source projects are targeted with malicious pull requests and poisoned depe
 - Workflows from first-time contributors' forks don't run until the maintainer approves them.
 
 **How the repository protects itself**
-- CI jobs run with a read-only token (`permissions: contents: read`).
+- CI jobs run with a read-only token (`permissions: contents: read`). The one exception is the demo-publishing workflow: its deploy job alone can write to GitHub Pages, and the whole workflow is inert unless the maintainer sets the `DEPLOY_DEMO` variable.
 - Third-party GitHub Actions are pinned to full commit hashes, not movable tags.
 - Dependencies install in CI with `--ignore-scripts`, so a compromised package can't run code at install time.
 - `npm audit` (high severity and above) and `cargo audit` run on every pull request. Exceptions are listed with reasons in `contracts/escrow/.cargo/audit.toml`.
