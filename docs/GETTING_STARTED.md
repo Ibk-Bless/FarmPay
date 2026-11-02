@@ -156,6 +156,7 @@ FarmPay/
 
 | Symptom | Fix |
 |---|---|
+| `stellar` says "rpc-url is used but network passphrase is missing" | You ran it inside `backend/`. The Stellar CLI reads a `.env` file in the current directory, and `backend/.env` sets `STELLAR_RPC_URL`. Run `stellar` from the repository root instead |
 | `ACCOUNT_NOT_FOUND` from the API | The signer's account isn't funded on testnet. Run `stellar keys fund <name> --network testnet` |
 | `order endpoints are disabled` on startup | `ESCROW_CONTRACT_ID` is empty in `backend/.env`. Run `./setup.sh` |
 | Transfer fails with a trustline error | The farmer or buyer has no trustline to the test USDC asset. Re-run `./setup.sh` |

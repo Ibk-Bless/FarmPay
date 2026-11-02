@@ -28,6 +28,7 @@ The source of truth for every order. It holds the USDC, enforces the state machi
 A thin, keyless layer between the app and the network:
 - **Builds** each action as a simulated, unsigned transaction. Simulation catches invalid actions before the user signs anything.
 - **Reads** orders straight from the contract.
+- **Indexes** every order into a local SQLite file by watching the contract's events, so it can answer "which orders is this account part of?" (`GET /api/orders?party=`). The index is a rebuildable cache: see [The order index](DEPLOYMENT.md#the-order-index).
 - **Relays** signed transactions, but only single calls to the configured escrow contract. It then waits for the result.
 
 ### Frontend (`frontend`)
@@ -86,4 +87,4 @@ The main trust assumption is the cooperative's judgement in disputes. Both parti
 - **Disputes end in a split, not a winner-takes-all ruling.** Partial deliveries are the most common real dispute.
 - **Storage lives as long as the order.** Each order's TTL is set from its next deadline, and the contract instance is topped up on every state change, so neither is archived while someone still needs to act. See [Storage lifetime](../contracts/escrow/README.md#storage-lifetime).
 - **One token per deployment.** The contract is deployed with USDC as its token, so it never has to choose or whitelist assets.
-- **There is no database yet.** Everything v1 needs is on-chain. A database will hold off-chain order details (crop, quantity, notes) and an event index for listing orders.
+- **The only database is a cache.** Everything v1 needs is on-chain. The order index (SQLite) exists because a contract can't list orders by account; it holds nothing the chain doesn't, and can be deleted at any time. Off-chain order details (crop, quantity, notes) would be the first thing that needs real storage.

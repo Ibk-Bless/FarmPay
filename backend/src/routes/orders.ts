@@ -1,6 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from 'express'
 import { StrKey, nativeToScVal, type xdr } from '@stellar/stellar-sdk'
 import { EscrowError, EscrowService, type Order, parseUsdc } from '../stellar/escrow.js'
+import type { Indexer } from '../indexer/indexer.js'
 
 type Role = 'buyer' | 'farmer' | 'arbiter'
 
@@ -12,6 +13,8 @@ const MIN_DISPUTE_WINDOW_DAYS = 1
 const MAX_DISPUTE_WINDOW_DAYS = 30
 const DEFAULT_DISPUTE_WINDOW_DAYS = 7
 const MAX_REASON_LENGTH = 500
+const DEFAULT_LIST_LIMIT = 100
+const MAX_LIST_LIMIT = 500
 
 interface ActionSpec {
   method: string
@@ -42,7 +45,7 @@ const ACTIONS: Record<string, ActionSpec> = {
   },
 }
 
-export function ordersRouter(escrow: EscrowService): Router {
+export function ordersRouter(escrow: EscrowService, indexer?: Indexer): Router {
   const router = Router()
 
   router.post(
@@ -92,6 +95,26 @@ export function ordersRouter(escrow: EscrowService): Router {
         disputeWindow: disputeWindowDays * 24 * 3600,
       })
       res.json({ action: 'create', xdr })
+    }),
+  )
+
+  // Which orders is this account part of? Answered from the local index, never from the chain.
+  router.get(
+    '/orders',
+    handle(async (req, res) => {
+      if (!indexer) throw new EscrowError('INDEX_UNAVAILABLE', 'The order index is not running', 503)
+      const query = req.query as Record<string, unknown>
+      const party = requireAccount(query, 'party')
+      const limit = query.limit === undefined ? DEFAULT_LIST_LIMIT : Number(query.limit)
+      if (!Number.isInteger(limit) || limit < 1 || limit > MAX_LIST_LIMIT) {
+        throw new EscrowError('INVALID_LIMIT', `limit must be a whole number from 1 to ${MAX_LIST_LIMIT}`)
+      }
+      res.json({
+        orders: indexer.index.ordersFor(party, limit),
+        // Lets a client say "up to date as of ledger N", and tell loading from empty.
+        indexedLedger: indexer.indexedLedger,
+        synced: indexer.synced,
+      })
     }),
   )
 
