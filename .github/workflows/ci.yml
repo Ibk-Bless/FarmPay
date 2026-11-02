@@ -72,6 +72,9 @@ jobs:
       # What users see when the Stellar network fails, using a fake RPC
       - name: RPC failure handling checks
         run: node scripts/check-rpc-failures.mjs
+      # The order index: finds orders, follows events, survives restarts and downtime (fake chain)
+      - name: Order index checks
+        run: node --no-warnings scripts/check-indexer.mjs
 
   frontend:
     name: Frontend

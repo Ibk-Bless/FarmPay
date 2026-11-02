@@ -51,6 +51,11 @@ test_snapshots/
 *.db
 *.sqlite
 *.sqlite3
+# SQLite's write-ahead log and shared-memory side files
+*.sqlite-wal
+*.sqlite-shm
+# The backend's local order index (rebuildable from the chain)
+backend/data/
 
 # Stellar
 .soroban/

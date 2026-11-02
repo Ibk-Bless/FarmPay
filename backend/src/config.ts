@@ -14,4 +14,8 @@ export const config = {
     .map((origin) => origin.trim())
     .filter(Boolean),
   logRequests: process.env.LOG_REQUESTS !== 'false',
+  // The order index: a rebuildable local copy of every order (see src/indexer/).
+  indexDbPath: process.env.INDEX_DB_PATH ?? './data/index.sqlite',
+  indexPollMs: Math.max(1000, Number(process.env.INDEX_POLL_MS ?? 5000) || 5000),
+  indexStartLedger: process.env.INDEX_START_LEDGER ? Number(process.env.INDEX_START_LEDGER) : undefined,
 }

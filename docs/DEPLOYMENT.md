@@ -43,6 +43,21 @@ Environment variables:
 | `ESCROW_CONTRACT_ID` | — | Deployed escrow contract (required for order endpoints) |
 | `CORS_ORIGIN` | — (any origin) | Comma-separated browser origins allowed to call the API, e.g. `https://farmpay.example`. **Set this when deploying.** The server warns at startup if it is empty |
 | `LOG_REQUESTS` | `true` | One JSON log line per request; `false` silences it |
+| `INDEX_DB_PATH` | `./data/index.sqlite` | Where the order index is stored (see below). Put it on persistent storage |
+| `INDEX_POLL_MS` | `5000` | How often the index looks for new events (minimum 1000) |
+| `INDEX_START_LEDGER` | latest ledger | First run only: replay events from this ledger. Normally unnecessary |
+
+### The order index
+
+`GET /api/orders?party=` answers "which orders is this account part of?", which the contract cannot do on its own. The backend keeps a local copy of every order in a SQLite file and keeps it current by watching the contract's events.
+
+- **It is a cache, not a source of truth.** Delete the file and it rebuilds itself from the chain: it re-reads unfinished orders, then reads order 1, 2, 3 and so on until there isn't one. Back it up if you like, but you never have to.
+- **It survives downtime.** The RPC only keeps events for about 7 days. Because every start re-reads unfinished orders directly, a server that was down for longer loses nothing.
+- **Events only trigger a re-read.** When an event says an order changed, the order is read again from the contract, so a duplicate or out-of-order event is harmless.
+- **Failures are contained.** A network problem is retried with a growing delay (up to a minute); an order the contract refuses to read for a lasting reason (for example its storage expired) is logged and skipped so it can't block the rest.
+- **Check on it** with `GET /api/health`: `index.synced`, `index.indexedLedger` and `index.orders`.
+
+It uses Node's built-in SQLite, so it needs **Node 22.13 or newer** and adds no dependency. Node prints one `ExperimentalWarning` about it at startup (pass `--no-warnings` to hide it). Use a single backend instance per database file.
 
 ### Logs and request ids
 

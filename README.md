@@ -145,8 +145,9 @@ Open http://localhost:3000, connect [Freighter](https://www.freighter.app/) on T
 - [ ] Host the demo publicly (GitHub Pages)
 - [x] Create order screen
 - [x] Order screen with every role's actions: accept, deliver, confirm, dispute, claim, cancel, resolve
-- [ ] Order listing and farmer delivery history (event indexer)
-- [ ] Buyer and farmer dashboards (needs the indexer)
+- [x] Order index and `GET /api/orders?party=` (list an account's orders)
+- [ ] Buyer and farmer dashboards (unblocked by the index)
+- [ ] Farmer delivery history
 
 **v2: Real-world pilot**
 - [ ] SEP-24 anchor integration for local-currency cash-out

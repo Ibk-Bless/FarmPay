@@ -3,11 +3,14 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import cors from 'cors'
 import { EscrowError, type EscrowService } from './stellar/escrow.js'
 import { ordersRouter } from './routes/orders.js'
+import type { Indexer } from './indexer/indexer.js'
 
 export interface AppOptions {
   /** Omit to run without order endpoints (e.g. the contract is not deployed yet). */
   escrow?: EscrowService
   escrowContractId?: string
+  /** Keeps the list of orders per account; without it `GET /api/orders` answers 503. */
+  indexer?: Indexer
   /** Browser origins allowed to call the API. Empty or omitted allows any origin. */
   corsOrigins?: string[]
   /** One JSON log line per request. Defaults to on. */
@@ -18,6 +21,7 @@ export interface AppOptions {
 export function createApp({
   escrow,
   escrowContractId,
+  indexer,
   corsOrigins = [],
   logRequests = true,
 }: AppOptions = {}): Express {
@@ -34,10 +38,21 @@ export function createApp({
   app.use(express.json({ limit: '100kb' }))
 
   app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', escrowContractId: escrowContractId || null })
+    res.json({
+      status: 'ok',
+      escrowContractId: escrowContractId || null,
+      index: indexer
+        ? {
+            synced: indexer.synced,
+            indexedLedger: indexer.indexedLedger,
+            orders: indexer.index.count(),
+            ...(indexer.lastError && { lastError: indexer.lastError }),
+          }
+        : null,
+    })
   })
 
-  if (escrow) app.use('/api', ordersRouter(escrow))
+  if (escrow) app.use('/api', ordersRouter(escrow, indexer))
 
   // Unknown API paths get the same JSON error format as everything else.
   app.use('/api', (req, _res, next) => {

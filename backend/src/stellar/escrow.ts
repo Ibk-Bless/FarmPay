@@ -15,6 +15,7 @@ import {
   scValToNative,
   xdr,
 } from '@stellar/stellar-sdk'
+import type { EventPage } from '../indexer/indexer.js'
 
 export const USDC_DECIMALS = 7
 
@@ -138,6 +139,40 @@ export class EscrowService {
   ) {
     this.server = new rpc.Server(rpcUrl, { allowHttp: rpcUrl.startsWith('http://') })
     this.contract = new Contract(contractId)
+  }
+
+  /** The newest ledger, and the oldest one the RPC still keeps events for. */
+  async ledgerRange(): Promise<{ latest: number; oldest: number }> {
+    const health = await this.rpc(() => this.server.getHealth())
+    return { latest: health.latestLedger, oldest: health.oldestLedger }
+  }
+
+  /**
+   * One page of events saying orders changed. The RPC scans only a slice of ledgers per call
+   * and hands back a cursor to continue from, so an empty page does not mean "no more": keep
+   * going until `caughtUp`. Only the order ids are read; the order is then fetched afresh.
+   */
+  async orderEvents(from: { ledger: number } | { cursor: string }, limit = 200): Promise<EventPage> {
+    const filters = [{ type: 'contract' as const, contractIds: [this.contractId] }]
+    const request = 'cursor' in from ? { filters, cursor: from.cursor, limit } : { filters, startLedger: from.ledger, limit }
+    const res = await this.rpc(() => this.server.getEvents(request))
+
+    const orderIds = new Set<bigint>()
+    for (const event of res.events) {
+      // The real RPC omits this field; only an explicit `false` marks a failed call.
+      if (event.inSuccessfulContractCall === false) continue
+      const [name, id] = event.topic.map((topic) => scValToNative(topic))
+      if (name === 'status_changed' && typeof id === 'bigint') orderIds.add(id)
+    }
+
+    // The cursor is a transaction id whose upper bits are the ledger sequence.
+    const cursorLedger = Number(BigInt(res.cursor.split('-')[0]) >> 32n)
+    return {
+      orderIds: [...orderIds],
+      cursor: res.cursor,
+      latestLedger: res.latestLedger,
+      caughtUp: res.events.length < limit && cursorLedger >= res.latestLedger - 1,
+    }
   }
 
   /** Unsigned `create_order` transaction, to be signed by the buyer. */

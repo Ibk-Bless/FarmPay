@@ -36,8 +36,14 @@ Every response includes an `X-Request-Id` header (also exposed to browsers throu
 **GET** `/health`
 
 ```json
-{ "status": "ok", "escrowContractId": "CCD4..." }
+{
+  "status": "ok",
+  "escrowContractId": "CCD4...",
+  "index": { "synced": true, "indexedLedger": 5517707, "orders": 4 }
+}
 ```
+
+`index` is `null` when no contract is configured. `synced` is `false` until the order index has finished its first pass; `lastError` appears while it is retrying after a network problem.
 
 ### Create order
 
@@ -62,6 +68,39 @@ Response:
 ```
 
 After submitting, the response from `POST /transactions` includes the new `orderId`.
+
+### List an account's orders
+
+**GET** `/orders?party=<G...>&limit=100`
+
+Every order the account takes part in (as buyer, farmer or cooperative), newest first, each tagged with the account's `role`. It is answered from the local [order index](DEPLOYMENT.md#the-order-index), not by scanning the chain, so it is fast and free.
+
+```json
+{
+  "orders": [
+    {
+      "id": "4",
+      "buyer": "GBKX...",
+      "farmer": "GBJV...",
+      "arbiter": "GBPD...",
+      "amount": "42",
+      "status": "Released",
+      "role": "buyer",
+      "deliveryDeadline": 1793600000,
+      "reviewWindow": 259200,
+      "reviewDeadline": 1793011000,
+      "disputeWindow": 259200,
+      "disputeDeadline": 0
+    }
+  ],
+  "indexedLedger": 5517707,
+  "synced": true
+}
+```
+
+- `limit` is a whole number from 1 to 500 (default 100)
+- `synced: false` means the index is still doing its first pass, so an empty list may only mean "not loaded yet". `indexedLedger` says how recent the data is, typically a few seconds behind the chain
+- Errors: `MISSING_FIELD` or `INVALID_ADDRESS` for `party`, `INVALID_LIMIT`, and `503 INDEX_UNAVAILABLE` if the index isn't running
 
 ### Get order
 
@@ -138,7 +177,7 @@ Response:
 
 | HTTP | Code | Cause |
 |---|---|---|
-| 400 | `BAD_SIGNATURE`, `MISSING_FIELD`, `INVALID_JSON`, `INVALID_BODY`, `INVALID_REASON`, `INVALID_ADDRESS`, `INVALID_AMOUNT`, `INVALID_DEADLINE`, `INVALID_ORDER_ID`, `INVALID_PARTIES`, `INVALID_SPLIT`, `INVALID_TRANSACTION` | Bad input, including a request body that is not valid JSON |
+| 400 | `INVALID_LIMIT`, `BAD_SIGNATURE`, `MISSING_FIELD`, `INVALID_JSON`, `INVALID_BODY`, `INVALID_REASON`, `INVALID_ADDRESS`, `INVALID_AMOUNT`, `INVALID_DEADLINE`, `INVALID_ORDER_ID`, `INVALID_PARTIES`, `INVALID_SPLIT`, `INVALID_TRANSACTION` | Bad input, including a request body that is not valid JSON |
 | 403 | `UNAUTHORIZED` | The signer isn't allowed to perform this action |
 | 404 | `ORDER_NOT_FOUND`, `ACCOUNT_NOT_FOUND`, `NOT_FOUND` | Unknown order, unfunded account, or an unknown path or action. Unknown `/api` paths return this JSON format, not an HTML page |
 | 413 | `PAYLOAD_TOO_LARGE` | Request body over 100 KB |
@@ -146,12 +185,11 @@ Response:
 | 409 | `TRANSACTION_EXPIRED`, `TRANSACTION_STALE`, `INSUFFICIENT_FUNDS`, `FEE_TOO_LOW` | The network refused a submitted transaction. The message says what to do (prepare it again, check the order, add XLM) |
 | 502 | `SIMULATION_FAILED`, `SUBMIT_FAILED`, `TRANSACTION_FAILED` | The network or RPC refused or failed for another reason |
 | 502 | `SUBMIT_UNCERTAIN` | The transaction was sent but the connection dropped before it was confirmed. **Do not resubmit blindly**: check the order first; the message includes the transaction hash |
-| 503 | `RPC_UNAVAILABLE`, `NETWORK_BUSY` | The Stellar RPC can't be reached, or the network is busy or already has this transaction. Safe to retry after a moment |
+| 503 | `INDEX_UNAVAILABLE`, `RPC_UNAVAILABLE`, `NETWORK_BUSY` | The Stellar RPC can't be reached, or the network is busy or already has this transaction. Safe to retry after a moment |
 
 Contract error codes map one-to-one to the contract's `Error` enum. See [contracts/escrow/README.md](../contracts/escrow/README.md#errors).
 
 ## Planned
 
-- `GET /orders?party=<address>`: list a party's orders, indexed from contract events
 - `GET /farmers/:address/history`: delivery history built from `Released` and `Resolved` orders
 - Off-chain order details (crop, quantity, notes) stored alongside the on-chain order
