@@ -40,6 +40,19 @@ export interface CreateOrderInput {
   disputeWindowDays?: number
 }
 
+export type OrderRole = 'buyer' | 'farmer' | 'arbiter'
+
+/** An order as listed for one account: tagged with the part that account plays in it. */
+export type ListedOrder = Order & { role: OrderRole }
+
+export interface OrderList {
+  orders: ListedOrder[]
+  /** How recent the list is; the index is normally a few seconds behind the chain. */
+  indexedLedger: number
+  /** False while the server is still doing its first read of the chain, so an empty list may only mean "loading". */
+  synced: boolean
+}
+
 export type OrderAction = 'accept' | 'cancel' | 'deliver' | 'confirm' | 'claim' | 'dispute' | 'resolve' | 'expire'
 
 export interface BuiltTransaction {
@@ -87,6 +100,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 const realApi = {
   getOrder: (id: string) => request<Order>(`/orders/${encodeURIComponent(id)}`),
 
+  listOrders: (party: string) => request<OrderList>(`/orders?party=${encodeURIComponent(party)}`),
+
   buildCreateOrder: (input: CreateOrderInput) =>
     request<BuiltTransaction>('/orders', { method: 'POST', body: JSON.stringify(input) }),
 
@@ -105,6 +120,7 @@ export const api: typeof realApi = isDemo ? demoApi : realApi
 
 // User-facing messages for the API's error codes.
 const MESSAGES: Record<string, string> = {
+  INDEX_UNAVAILABLE: "The list of orders isn't available right now. Please try again in a moment.",
   NETWORK: "Can't reach the FarmPay server. Check your connection and try again.",
   SERVER_ERROR: 'The FarmPay server had a problem. Please try again in a moment.',
   BAD_RESPONSE: 'The FarmPay server sent an unexpected response. Please try again, or contact the people running this site.',

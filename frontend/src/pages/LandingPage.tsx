@@ -19,7 +19,12 @@ export default function LandingPage() {
               <a href="#how-it-works" className="text-gray-700 hover:text-green-700">How It Works</a>
               <a href="#features" className="text-gray-700 hover:text-green-700">Features</a>
             </div>
-            <WalletButton />
+            <div className="flex items-center gap-4">
+              <Link to="/orders" className="hidden sm:inline whitespace-nowrap text-gray-700 hover:text-green-700">
+                My orders
+              </Link>
+              <WalletButton />
+            </div>
           </div>
         </div>
       </nav>

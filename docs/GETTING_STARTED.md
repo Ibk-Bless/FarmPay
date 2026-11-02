@@ -61,6 +61,8 @@ curl http://localhost:4000/api/health
 5. Switch Freighter to the farmer account and reload. Accept, then mark the order delivered.
 6. Switch back to the buyer. Confirm delivery, or open a dispute and resolve it as `fp-coop`.
 
+Open **My orders** in the header at any point: it lists every order the connected account takes part in, sorted by what needs doing next, and lets you accept, deliver, confirm or claim without opening the order. It needs the backend's order index, which `./setup.sh` configures.
+
 Share the order page link with the other party. Each person only sees the actions their account is allowed to take.
 
 ## Try the flow from the command line
