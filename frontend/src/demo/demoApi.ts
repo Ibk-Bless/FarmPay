@@ -4,7 +4,16 @@
 // with the same error codes as the real API, so the UI behaves exactly as it does against
 // testnet. Nothing here talks to a network. State lives in sessionStorage.
 
-import type { BuiltTransaction, CreateOrderInput, Order, OrderAction, OrderStatus, SubmitResult } from '../lib/api'
+import type {
+  BuiltTransaction,
+  CreateOrderInput,
+  ListedOrder,
+  Order,
+  OrderAction,
+  OrderList,
+  OrderStatus,
+  SubmitResult,
+} from '../lib/api'
 import { ApiError } from '../lib/errors'
 import { clock } from '../lib/clock'
 import { DEMO_ACCOUNTS } from './accounts'
@@ -202,6 +211,17 @@ export const demoApi = {
   async getOrder(id: string): Promise<Order> {
     await delay()
     return { ...find(id) }
+  },
+
+  /** Like the real endpoint: every order the account takes part in, newest first, with its role. */
+  async listOrders(party: string): Promise<OrderList> {
+    await delay()
+    if (!ADDRESS.test(party)) throw new ApiError('INVALID_ADDRESS', 'Not a valid account')
+    const orders = state()
+      .orders.filter((o) => [o.buyer, o.farmer, o.arbiter].includes(party))
+      .sort((a, b) => Number(b.id) - Number(a.id))
+      .map((o): ListedOrder => ({ ...o, role: o.buyer === party ? 'buyer' : o.farmer === party ? 'farmer' : 'arbiter' }))
+    return { orders, indexedLedger: 0, synced: true }
   },
 
   async buildCreateOrder(input: CreateOrderInput): Promise<BuiltTransaction> {

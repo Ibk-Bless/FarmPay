@@ -50,6 +50,10 @@ export class MockApi {
   built: Built[] = []
   private nextId = 1
   private failure: { status: number; code: string; message: string } | null = null
+  private listFailure: { status: number; code: string } | null = null
+  /** False mimics the server still doing its first read of the chain. */
+  listSynced = true
+  listCalls = 0
 
   seed(overrides: Partial<MockOrder> = {}): MockOrder {
     const id = String(this.nextId++)
@@ -71,6 +75,11 @@ export class MockApi {
     return order
   }
 
+  /** Make the next request for an account's order list fail with the given API error. */
+  failNextList(status: number, code: string) {
+    this.listFailure = { status, code }
+  }
+
   /** Make the next build request fail with the given API error. */
   failNextBuild(status: number, code: string, message = code) {
     this.failure = { status, code, message }
@@ -86,6 +95,22 @@ export class MockApi {
     const body = (request.postDataJSON() ?? {}) as Record<string, unknown>
     const reply = (status: number, json: unknown) => route.fulfill({ status, json })
     const error = (status: number, code: string) => reply(status, { error: { code, message: code } })
+
+    if (request.method() === 'GET' && path === '/orders') {
+      this.listCalls++
+      if (this.listFailure) {
+        const { status, code } = this.listFailure
+        this.listFailure = null
+        return error(status, code)
+      }
+      const party = new URL(request.url()).searchParams.get('party')
+      if (!party) return error(400, 'MISSING_FIELD')
+      const orders = [...this.orders.values()]
+        .filter((o) => [o.buyer, o.farmer, o.arbiter].includes(party))
+        .sort((a, b) => Number(b.id) - Number(a.id))
+        .map((o) => ({ ...o, role: o.buyer === party ? 'buyer' : o.farmer === party ? 'farmer' : 'arbiter' }))
+      return reply(200, { orders: this.listSynced ? orders : [], indexedLedger: 1, synced: this.listSynced })
+    }
 
     const orderMatch = /^\/orders\/([^/]+)$/.exec(path)
     if (request.method() === 'GET' && orderMatch) {

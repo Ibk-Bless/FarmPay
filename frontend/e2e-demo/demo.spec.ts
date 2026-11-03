@@ -173,6 +173,49 @@ test('the buyer can cancel an accepted order once its delivery deadline has pass
   await act(page, 'Cancel and refund 1,840.50 USDC', 'Cancelled. The buyer was refunded in full.')
 })
 
+// "My orders": the list of orders for whoever you are acting as.
+test('My orders shows the orders you are part of, grouped by what they need from you', async ({ page }) => {
+  await page.goto('/#/orders')
+  // As the buyer: the seeded orders are finished or waiting on the farmer, so nothing needs action.
+  await expect(page.getByRole('heading', { name: 'My orders' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Waiting on others \(1\)/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Completed \(2\)/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Needs your action/ })).toHaveCount(0)
+
+  await as(page, 'Farmer')
+  await expect(page.getByRole('heading', { name: /Needs your action \(1\)/ })).toBeVisible()
+  await expect(page.getByText('Accept this order to start')).toBeVisible()
+})
+
+test('a farmer works through an order from the dashboard without opening it', async ({ page }) => {
+  await page.goto('/#/farmer/dashboard')
+  await as(page, 'Farmer')
+  await page.getByRole('button', { name: 'Accept order' }).click()
+  await expect(page.getByRole('button', { name: 'Mark as delivered' })).toBeVisible()
+  await page.getByRole('button', { name: 'Mark as delivered' }).click()
+  await expect(page.getByText('Delivered: waiting for the buyer to confirm')).toBeVisible()
+
+  // The farmer dashboard only lists farmer orders, so the buyer looks at theirs.
+  await as(page, 'Buyer')
+  await page.goto('/#/buyer/dashboard')
+  await expect(page.getByRole('heading', { name: /Needs your action \(1\)/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Confirm delivery' }).click()
+  await expect(page.getByRole('heading', { name: /Completed \(3\)/ })).toBeVisible()
+})
+
+test('after the review window the dashboard offers the farmer the claim, and skipping ahead updates it', async ({ page }) => {
+  await page.goto('/#/order/3')
+  await as(page, 'Farmer')
+  await act(page, 'Accept order', 'The farmer accepted')
+  await act(page, 'Mark as delivered', /marked the order delivered/)
+
+  await page.goto('/#/farmer/dashboard')
+  await expect(page.getByRole('button', { name: 'Claim payment' })).toHaveCount(0)
+  await skip(page, 4)
+  await page.getByRole('button', { name: 'Claim payment' }).click()
+  await expect(page.getByRole('heading', { name: /Completed \(3\)/ })).toBeVisible()
+})
+
 test('a visitor without a wallet is asked to choose a role', async ({ page }) => {
   await page.goto('/#/order/create')
   await as(page, 'Visitor (no wallet)')
@@ -211,6 +254,9 @@ for (const [name, path, role] of [
   ['create order', '/#/order/create', 'Buyer'],
   ['order awaiting the farmer', '/#/order/3', 'Farmer'],
   ['order as a visitor', '/#/order/3', 'Visitor (no wallet)'],
+  ['my orders', '/#/orders', 'Buyer'],
+  ['farmer dashboard with an action', '/#/farmer/dashboard', 'Farmer'],
+  ['my orders as a visitor', '/#/orders', 'Visitor (no wallet)'],
 ] as const) {
   test(`no accessibility violations in the demo: ${name}`, async ({ page }) => {
     await page.goto(path)
@@ -227,6 +273,8 @@ for (const [name, path] of [
   ['create order', '/#/order/create'],
   ['order', '/#/order/3'],
   ['not found', '/#/nope'],
+  ['my orders', '/#/orders'],
+  ['farmer dashboard', '/#/farmer/dashboard'],
 ] as const) {
   test(`fits a phone screen without horizontal scrolling: ${name}`, async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 800 })

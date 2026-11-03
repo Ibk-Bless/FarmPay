@@ -23,7 +23,19 @@ const pages: { name: string; role: Role; path: (api: MockApi) => string; ready: 
   { name: 'landing page', role: 'buyer', path: () => '/', ready: 'Order #1 — 125.50 USDC' },
   { name: 'create order', role: 'buyer', path: () => '/order/create', ready: 'Lock funds and create order' },
   { name: 'not found', role: 'buyer', path: () => '/nope', ready: 'Page not found' },
-  { name: 'planned page', role: 'buyer', path: () => '/buyer/dashboard', ready: 'Buyer Dashboard' },
+  { name: 'planned page', role: 'buyer', path: () => '/farmer/someone/profile', ready: 'Delivery History' },
+  {
+    name: 'my orders: all three sections',
+    role: 'farmer',
+    path: (api) => {
+      api.seed({ status: 'Funded' })
+      api.seed({ status: 'Accepted' })
+      api.seed({ status: 'Released' })
+      return '/farmer/dashboard'
+    },
+    ready: 'Accept order',
+  },
+  { name: 'my orders: empty', role: 'buyer', path: () => '/buyer/dashboard', ready: 'No orders yet' },
   { name: 'order: funded (farmer)', role: 'farmer', path: (api) => `/order/${api.seed().id}`, ready: 'Accept order' },
   {
     name: 'order: accepted (farmer)',

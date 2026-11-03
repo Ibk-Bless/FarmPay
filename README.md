@@ -146,7 +146,7 @@ Open http://localhost:3000, connect [Freighter](https://www.freighter.app/) on T
 - [x] Create order screen
 - [x] Order screen with every role's actions: accept, deliver, confirm, dispute, claim, cancel, resolve
 - [x] Order index and `GET /api/orders?party=` (list an account's orders)
-- [ ] Buyer and farmer dashboards (unblocked by the index)
+- [x] **My orders**: buyer, farmer and cooperative dashboards that show what each order needs from you, with one-click actions
 - [ ] Farmer delivery history
 
 **v2: Real-world pilot**

@@ -49,6 +49,7 @@ export default function DemoBar() {
               Open a dispute and have nobody rule, then <strong>skip ahead past the dispute deadline</strong> (7 days
               by default): the cooperative can no longer rule, and anyone can settle it with an even split.
             </li>
+            <li>Open <strong>My orders</strong> in the header to see what each role needs to do next, and act on it from the list.</li>
             <li>As the <strong>Buyer</strong>, create your own order from the header.</li>
           </ol>
         </details>

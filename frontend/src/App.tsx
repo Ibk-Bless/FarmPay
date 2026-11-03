@@ -1,7 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
-import BuyerDashboard from './pages/BuyerDashboard'
-import FarmerDashboard from './pages/FarmerDashboard'
+import MyOrders from './pages/MyOrders'
 import OrderCreation from './pages/OrderCreation'
 import OrderDetail from './pages/OrderDetail'
 import DeliveryProfile from './pages/DeliveryProfile'
@@ -15,8 +14,10 @@ function App() {
       {isDemo && <DemoBar />}
       <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/buyer/dashboard" element={<BuyerDashboard />} />
-      <Route path="/farmer/dashboard" element={<FarmerDashboard />} />
+      <Route path="/orders" element={<MyOrders />} />
+      <Route path="/buyer/dashboard" element={<MyOrders role="buyer" />} />
+      <Route path="/farmer/dashboard" element={<MyOrders role="farmer" />} />
+      <Route path="/cooperative/dashboard" element={<MyOrders role="arbiter" />} />
       <Route path="/order/create" element={<OrderCreation />} />
       <Route path="/order/:orderId" element={<OrderDetail />} />
       <Route path="/farmer/:farmerId/profile" element={<DeliveryProfile />} />
