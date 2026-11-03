@@ -16,6 +16,8 @@ use soroban_sdk::{
 
 #[cfg(test)]
 mod test;
+#[cfg(test)]
+mod test_invariants;
 
 // Storage lifetimes (TTL), in ledgers. Ledgers close roughly every 5 seconds;
 // converting time to ledgers at 5s slightly over-estimates, which errs on the

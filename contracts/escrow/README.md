@@ -137,6 +137,8 @@ cargo test
 
 The tests in `src/test.rs` cover the happy path, auto-release, both cancellation paths, dispute splits (including bounds), window timing, invalid transitions, authorization, storage lifetimes, and the dispute deadline (rulings up to and after the boundary, the default split, odd amounts, and that a ruling and a default settlement are mutually exclusive).
 
+`src/test_invariants.rs` adds randomized scenarios. Each one is a seeded sequence of creations, actions (valid and not) and waits, some landing a second before, on or after a deadline. Every result is compared with an independent model of this specification, and after every step the contract must hold exactly what its open orders are owed, with no order paying out more than its amount or twice. A second test checks that the generator reaches every state and error, so passing means something. A failure prints the seed and every step so far. `FARMPAY_FUZZ_CASES=5000 cargo test random_scenarios` runs far more scenarios (about 5 minutes).
+
 ## Deployment (testnet)
 
 ```bash
