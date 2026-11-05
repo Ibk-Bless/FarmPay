@@ -180,6 +180,7 @@ Response:
 | 400 | `INVALID_LIMIT`, `BAD_SIGNATURE`, `MISSING_FIELD`, `INVALID_JSON`, `INVALID_BODY`, `INVALID_REASON`, `INVALID_ADDRESS`, `INVALID_AMOUNT`, `INVALID_DEADLINE`, `INVALID_ORDER_ID`, `INVALID_PARTIES`, `INVALID_SPLIT`, `INVALID_TRANSACTION` | Bad input, including a request body that is not valid JSON |
 | 403 | `UNAUTHORIZED` | The signer isn't allowed to perform this action |
 | 404 | `ORDER_NOT_FOUND`, `ACCOUNT_NOT_FOUND`, `NOT_FOUND` | Unknown order, unfunded account, or an unknown path or action. Unknown `/api` paths return this JSON format, not an HTML page |
+| 429 | `RATE_LIMITED` | This client sent too many requests. Wait `Retry-After` seconds. Limits are set by the operator (see [DEPLOYMENT.md](DEPLOYMENT.md)); responses carry `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset` |
 | 413 | `PAYLOAD_TOO_LARGE` | Request body over 100 KB |
 | 409 | `INVALID_STATUS`, `TOO_EARLY`, `TOO_LATE` | Action not allowed in the order's current state or at the current time |
 | 409 | `TRANSACTION_EXPIRED`, `TRANSACTION_STALE`, `INSUFFICIENT_FUNDS`, `FEE_TOO_LOW` | The network refused a submitted transaction. The message says what to do (prepare it again, check the order, add XLM) |
