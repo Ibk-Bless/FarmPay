@@ -28,6 +28,8 @@ const app = createApp({
   indexer,
   corsOrigins: config.corsOrigins,
   logRequests: config.logRequests,
+  rateLimit: { max: config.rateLimitMax, windowMs: config.rateLimitWindowSeconds * 1000 },
+  trustProxy: config.trustProxy,
 })
 
 if (config.corsOrigins.length === 0) {
