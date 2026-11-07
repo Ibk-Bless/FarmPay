@@ -41,6 +41,9 @@ const now = () => Math.floor(Date.now() / 1000)
 const encode = (built: Built) => Buffer.from(JSON.stringify(built)).toString('base64')
 const decode = (xdr: string): Built => JSON.parse(Buffer.from(xdr, 'base64').toString())
 
+/** What the mock API returns as a transaction hash: 64 hex characters, like the real one. */
+export const MOCK_HASH = 'ab'.repeat(32)
+
 /**
  * In-memory stand-in for the FarmPay API. Built transactions are opaque base64
  * blobs; submitting one applies the same state transition the contract would.
@@ -144,10 +147,10 @@ export class MockApi {
           reviewWindow: Number(input.reviewWindowHours) * 3600,
           disputeWindow: Number(input.disputeWindowDays ?? 7) * 86400,
         })
-        return reply(200, { hash: 'mockhash', orderId: order.id })
+        return reply(200, { hash: MOCK_HASH, orderId: order.id })
       }
       this.apply(this.orders.get(built.orderId!)!, built.action!)
-      return reply(200, { hash: 'mockhash' })
+      return reply(200, { hash: MOCK_HASH })
     }
 
     return error(404, 'NOT_FOUND')
