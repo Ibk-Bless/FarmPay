@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import { CheckCircle, Circle, Copy, XCircle } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import { api, errorMessage, type Order, type OrderAction, type OrderStatus } from '../lib/api'
@@ -7,6 +7,7 @@ import { formatDate, formatUsdc, shortAddress, timeLeft } from '../lib/format'
 import { useNow } from '../lib/clock'
 import { useWallet } from '../wallet/context'
 import { STEP_LABELS, useTransaction } from '../wallet/useTransaction'
+import TxReceipt from '../components/TxReceipt'
 
 const STATUS_TEXT: Record<OrderStatus, string> = {
   Funded: 'Funds are locked. Waiting for the farmer to accept.',
@@ -22,6 +23,8 @@ const HAPPY_PATH: OrderStatus[] = ['Funded', 'Accepted', 'Delivered', 'Released'
 
 export default function OrderDetail() {
   const { orderId = '' } = useParams()
+  // An order just created arrives here with the hash of its transaction.
+  const created = (useLocation().state as { txHash?: string } | null)?.txHash
   const { address, wrongNetwork } = useWallet()
   const { run, step, busy, error } = useTransaction()
 
@@ -31,6 +34,7 @@ export default function OrderDetail() {
   const [reason, setReason] = useState('')
   const [farmerAmount, setFarmerAmount] = useState('')
   const [copied, setCopied] = useState(false)
+  const [actedHash, setActedHash] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -51,8 +55,10 @@ export default function OrderDetail() {
   const actionsHeading = useRef<HTMLHeadingElement>(null)
 
   async function act(action: OrderAction, body: Record<string, string> = {}) {
+    setActedHash(null)
     const result = await run(() => api.buildAction(orderId, action, body))
     if (result) {
+      setActedHash(result.hash)
       setReason('')
       setFarmerAmount('')
     }
@@ -256,6 +262,7 @@ export default function OrderDetail() {
         <div role="status" className={busy ? 'mt-4 text-sm text-gray-600' : undefined}>
           {busy ? STEP_LABELS[step] : null}
         </div>
+        {!busy && !error && (actedHash ?? created) && <TxReceipt hash={(actedHash ?? created)!} />}
         {error && (
           <p role="alert" className="mt-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
             {error}
