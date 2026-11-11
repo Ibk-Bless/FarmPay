@@ -118,6 +118,15 @@ export function ordersRouter(escrow: EscrowService, indexer?: Indexer): Router {
     }),
   )
 
+  // The USDC an account holds, so the app can warn before a transaction would fail for lack of it.
+  router.get(
+    '/accounts/:address/balance',
+    handle(async (req, res) => {
+      const account = requireAccount({ address: req.params.address }, 'address')
+      res.json({ balance: await escrow.getBalance(account) })
+    }),
+  )
+
   router.get(
     '/orders/:orderId',
     handle(async (req, res) => {

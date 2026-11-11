@@ -78,6 +78,9 @@ jobs:
       # The request limit: 429 format, per-client counting, window reset, proxy handling
       - name: Rate limit checks
         run: node scripts/check-rate-limit.mjs
+      # The balance endpoint, against a fake token contract
+      - name: Balance endpoint checks
+        run: node scripts/check-balance.mjs
 
   frontend:
     name: Frontend

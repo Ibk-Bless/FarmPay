@@ -102,6 +102,18 @@ Every order the account takes part in (as buyer, farmer or cooperative), newest 
 - `synced: false` means the index is still doing its first pass, so an empty list may only mean "not loaded yet". `indexedLedger` says how recent the data is, typically a few seconds behind the chain
 - Errors: `MISSING_FIELD` or `INVALID_ADDRESS` for `party`, `INVALID_LIMIT`, and `503 INDEX_UNAVAILABLE` if the index isn't running
 
+### Get an account's USDC balance
+
+```
+GET /api/accounts/:address/balance
+```
+
+```json
+{ "balance": "1840.5" }
+```
+
+Read from the escrow's token contract, so it is always the token the escrow uses. An account that holds none, or has no trustline, gets `"0"`. Errors: `400 INVALID_ADDRESS`, `503 RPC_UNAVAILABLE` (a network failure is never reported as a balance of `0`).
+
 ### Get order
 
 **GET** `/orders/:orderId`

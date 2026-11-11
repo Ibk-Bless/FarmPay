@@ -131,6 +131,8 @@ export class EscrowError extends Error {
 export class EscrowService {
   private server: rpc.Server
   private contract: Contract
+  /** The escrow's token, read once: a deployed contract never changes it. */
+  private tokenId: string | undefined
 
   constructor(
     rpcUrl: string,
@@ -206,6 +208,29 @@ export class EscrowService {
     if (rpc.Api.isSimulationError(sim)) throw contractError(sim.error)
     if (!sim.result) throw new EscrowError('SIMULATION_FAILED', 'Contract returned no result', 502)
     return toOrder(scValToNative(sim.result.retval))
+  }
+
+  /**
+   * How much of the escrow's token `account` holds, as a decimal string ("0" without a
+   * trustline). Lets the app warn about too little USDC before a transaction is attempted.
+   */
+  async getBalance(account: string): Promise<string> {
+    this.tokenId ??= addressOf(await this.read(this.contract, 'token', []))
+    const raw = await this.read(new Contract(this.tokenId), 'balance', [address(account)])
+    return formatUsdc(BigInt(raw as bigint))
+  }
+
+  /** Simulates a read-only call with a throwaway source account; nothing is submitted. */
+  private async read(contract: Contract, method: string, args: xdr.ScVal[]): Promise<unknown> {
+    const source = new Account(Keypair.random().publicKey(), '0')
+    const tx = new TransactionBuilder(source, { fee: BASE_FEE, networkPassphrase: this.networkPassphrase })
+      .addOperation(contract.call(method, ...args))
+      .setTimeout(300)
+      .build()
+    const sim = await this.rpc(() => this.server.simulateTransaction(tx))
+    if (rpc.Api.isSimulationError(sim)) throw contractError(sim.error)
+    if (!sim.result) throw new EscrowError('SIMULATION_FAILED', 'Contract returned no result', 502)
+    return scValToNative(sim.result.retval)
   }
 
   /** Submit a transaction signed by the user and wait for the result. */
@@ -327,6 +352,8 @@ export function formatUsdc(value: bigint): string {
   const fraction = (value % scale).toString().padStart(USDC_DECIMALS, '0').replace(/0+$/, '')
   return fraction ? `${value / scale}.${fraction}` : `${value / scale}`
 }
+
+const addressOf = (value: unknown): string => String(value)
 
 function address(value: string): xdr.ScVal {
   return new Address(value).toScVal()
