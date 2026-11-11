@@ -75,6 +75,9 @@ jobs:
       # The order index: finds orders, follows events, survives restarts and downtime (fake chain)
       - name: Order index checks
         run: node --no-warnings scripts/check-indexer.mjs
+      # The request limit: 429 format, per-client counting, window reset, proxy handling
+      - name: Rate limit checks
+        run: node scripts/check-rate-limit.mjs
 
   frontend:
     name: Frontend

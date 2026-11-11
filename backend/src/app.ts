@@ -4,6 +4,7 @@ import cors from 'cors'
 import { EscrowError, type EscrowService } from './stellar/escrow.js'
 import { ordersRouter } from './routes/orders.js'
 import type { Indexer } from './indexer/indexer.js'
+import { rateLimit } from './rateLimit.js'
 
 export interface AppOptions {
   /** Omit to run without order endpoints (e.g. the contract is not deployed yet). */
@@ -15,6 +16,10 @@ export interface AppOptions {
   corsOrigins?: string[]
   /** One JSON log line per request. Defaults to on. */
   logRequests?: boolean
+  /** Requests per client per window on the order and transaction routes. Omit or 0 for no limit. */
+  rateLimit?: { max: number; windowMs: number }
+  /** How many reverse proxies sit in front, so the client address is read from X-Forwarded-For. */
+  trustProxy?: number
 }
 
 /** Builds the Express app without listening, so it can be tested or embedded. */
@@ -24,8 +29,11 @@ export function createApp({
   indexer,
   corsOrigins = [],
   logRequests = true,
+  rateLimit: limit,
+  trustProxy = 0,
 }: AppOptions = {}): Express {
   const app = express()
+  app.set('trust proxy', trustProxy)
 
   app.use(requestId(logRequests))
   app.use(
@@ -52,7 +60,11 @@ export function createApp({
     })
   })
 
-  if (escrow) app.use('/api', ordersRouter(escrow, indexer))
+  if (escrow) {
+    // After /api/health, so monitoring is never limited.
+    if (limit && limit.max > 0) app.use('/api', rateLimit(limit))
+    app.use('/api', ordersRouter(escrow, indexer))
+  }
 
   // Unknown API paths get the same JSON error format as everything else.
   app.use('/api', (req, _res, next) => {
