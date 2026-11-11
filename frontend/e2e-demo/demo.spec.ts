@@ -36,6 +36,15 @@ test('happy path: the farmer accepts and delivers, the buyer confirms', async ({
   await act(page, 'Confirm delivery and pay farmer', 'Complete. The farmer was paid in full.')
 })
 
+test('the demo confirms a transaction without linking to an explorer', async ({ page }) => {
+  await page.goto('/#/order/3')
+  await as(page, 'Farmer')
+  await act(page, 'Accept order', 'The farmer accepted')
+  await expect(page.getByText('Transaction confirmed.')).toBeVisible()
+  await expect(page.getByText('simulated demo')).toBeVisible()
+  await expect(page.getByRole('link', { name: /stellar.expert/ })).toHaveCount(0)
+})
+
 test('a buyer creates an order with the prefilled demo accounts and it can be completed', async ({ page }) => {
   await page.goto('/#/order/create')
   await expect(page.getByLabel('Amount (USDC)')).toHaveValue('250')

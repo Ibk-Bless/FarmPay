@@ -77,7 +77,7 @@ export default function OrderCreation() {
       }),
     )
     if (result?.orderId) {
-      navigate(`/order/${result.orderId}`)
+      navigate(`/order/${result.orderId}`, { state: { txHash: result.hash } })
     } else {
       // The submit button was disabled while running, which drops keyboard focus. Put it back
       // once the button is enabled again so the user can read the error and retry.

@@ -1,4 +1,4 @@
-import { ACCOUNTS, expect, test } from './fixtures'
+import { ACCOUNTS, expect, MOCK_HASH, test } from './fixtures'
 
 const now = () => Math.floor(Date.now() / 1000)
 
@@ -13,6 +13,10 @@ test.describe('create order', () => {
     await expect(page).toHaveURL(/\/order\/1$/)
     await expect(page.getByText('Funds are locked. Waiting for the farmer to accept.')).toBeVisible()
     await expect(page.getByRole('heading', { name: '1,840.50 USDC' })).toBeVisible()
+    await expect(page.getByRole('link', { name: /View on stellar.expert/ })).toHaveAttribute(
+      'href',
+      `https://stellar.expert/explorer/testnet/tx/${MOCK_HASH}`,
+    )
     expect(api.built[0].body).toMatchObject({
       buyer: ACCOUNTS.buyer,
       farmer: ACCOUNTS.farmer,
@@ -78,6 +82,18 @@ test.describe('order page', () => {
     await buyer.getByRole('button', { name: 'Confirm delivery and pay farmer' }).click()
     await expect(buyer.getByText('Complete. The farmer was paid in full.')).toBeVisible()
     expect(api.orders.get(id)?.status).toBe('Released')
+  })
+
+  test('each action links to its transaction on the explorer, in a new tab', async ({ openAs, api }) => {
+    const { id } = api.seed({})
+    const farmer = await openAs('farmer', `/order/${id}`)
+    await expect(farmer.getByRole('link', { name: /View on stellar.expert/ })).toHaveCount(0)
+
+    await farmer.getByRole('button', { name: 'Accept order' }).click()
+    const link = farmer.getByRole('link', { name: /View on stellar.expert/ })
+    await expect(link).toHaveAttribute('href', `https://stellar.expert/explorer/testnet/tx/${MOCK_HASH}`)
+    await expect(link).toHaveAttribute('target', '_blank')
+    await expect(link).toHaveAttribute('rel', /noopener/)
   })
 
   test('dispute: buyer disputes and the cooperative splits the funds', async ({ openAs, api }) => {
