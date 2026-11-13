@@ -224,6 +224,17 @@ export const demoApi = {
     return { orders, indexedLedger: 0, synced: true }
   },
 
+  /** Everyone starts with 10,000 USDC; what the buyer locked in orders that were not refunded is gone. */
+  async getBalance(account: string): Promise<string> {
+    await delay()
+    if (!ADDRESS.test(account)) throw new ApiError('INVALID_ADDRESS', 'Not a valid account')
+    const spent = state()
+      .orders.filter((o) => o.buyer === account && o.status !== 'Refunded')
+      .reduce((sum, o) => sum + parseUsdc(o.amount), 0n)
+    const left = 100_000_000_000n - spent
+    return formatUsdc(left > 0n ? left : 0n)
+  },
+
   async buildCreateOrder(input: CreateOrderInput): Promise<BuiltTransaction> {
     await delay()
     for (const party of [input.buyer, input.farmer, input.arbiter]) {
