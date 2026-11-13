@@ -102,6 +102,10 @@ const realApi = {
 
   listOrders: (party: string) => request<OrderList>(`/orders?party=${encodeURIComponent(party)}`),
 
+  /** The USDC an account holds, as a decimal string. */
+  getBalance: (account: string) =>
+    request<{ balance: string }>(`/accounts/${encodeURIComponent(account)}/balance`).then((r) => r.balance),
+
   buildCreateOrder: (input: CreateOrderInput) =>
     request<BuiltTransaction>('/orders', { method: 'POST', body: JSON.stringify(input) }),
 
