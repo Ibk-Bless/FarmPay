@@ -115,8 +115,25 @@ export function isNetworkFailure(err: unknown): boolean {
   return /fetch failed|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|socket hang up/i.test(String(e?.message ?? ''))
 }
 
+const rpcTimeout = (ms: number) =>
+  new EscrowError(
+    'RPC_TIMEOUT',
+    `The Stellar network did not answer within ${Math.round(ms / 1000)} seconds. Please try again in a moment.`,
+    504,
+  )
+
 const rpcUnavailable = () =>
   new EscrowError('RPC_UNAVAILABLE', "Can't reach the Stellar network right now. Please try again in a moment.", 503)
+
+/** An RPC call that did not answer in time. Turned into a 504 (or `SUBMIT_UNCERTAIN`) by the caller. */
+class RpcTimeout extends Error {}
+
+export interface EscrowOptions {
+  /** How long to wait for one RPC call. */
+  timeoutMs?: number
+  /** Pause before the single retry of a read. */
+  retryDelayMs?: number
+}
 
 export class EscrowError extends Error {
   constructor(
@@ -133,12 +150,17 @@ export class EscrowService {
   private contract: Contract
   /** The escrow's token, read once: a deployed contract never changes it. */
   private tokenId: string | undefined
+  private timeoutMs: number
+  private retryDelayMs: number
 
   constructor(
     rpcUrl: string,
     private networkPassphrase: string,
     private contractId: string,
+    options: EscrowOptions = {},
   ) {
+    this.timeoutMs = options.timeoutMs ?? 10_000
+    this.retryDelayMs = options.retryDelayMs ?? 300
     this.server = new rpc.Server(rpcUrl, { allowHttp: rpcUrl.startsWith('http://') })
     this.contract = new Contract(contractId)
   }
@@ -245,7 +267,21 @@ export class EscrowService {
       throw new EscrowError('INVALID_TRANSACTION', 'Transaction must be a single FarmPay escrow call')
     }
 
-    const sent = await this.rpc(() => this.server.sendTransaction(tx))
+    // Never retried. If it times out the network may still have accepted it, so say so, with the
+    // hash to look up, instead of letting the user submit again blindly.
+    let sent
+    try {
+      sent = await this.rpc(() => this.server.sendTransaction(tx), { retry: false })
+    } catch (err) {
+      if (err instanceof EscrowError && err.code === 'RPC_TIMEOUT') {
+        throw new EscrowError(
+          'SUBMIT_UNCERTAIN',
+          `Your transaction was sent, but the network did not confirm it in time. Check the order before trying again. Transaction: ${Buffer.from(tx.hash()).toString('hex')}`,
+          502,
+        )
+      }
+      throw err
+    }
     if (sent.status === 'TRY_AGAIN_LATER') {
       throw new EscrowError(
         'NETWORK_BUSY',
@@ -284,30 +320,59 @@ export class EscrowService {
   private async buildCall(signer: string, method: string, args: xdr.ScVal[]): Promise<string> {
     let source
     try {
-      source = await this.server.getAccount(signer)
-    } catch {
+      source = await this.rpc(() => this.server.getAccount(signer))
+    } catch (err) {
+      if (err instanceof EscrowError) throw err // already a clear network error
       // The SDK reports every failure here as "account not found", including an unreachable RPC.
       // Check which it really is, so a network blip doesn't tell a funded user their account is gone.
       if (await this.isUnreachable()) throw rpcUnavailable()
       throw new EscrowError('ACCOUNT_NOT_FOUND', `Account ${signer} does not exist on the network`, 404)
     }
     try {
-      const prepared = await this.server.prepareTransaction(this.transaction(source, method, args))
+      const prepared = await this.rpc(() => this.server.prepareTransaction(this.transaction(source, method, args)))
       return prepared.toXDR()
     } catch (err) {
-      if (isNetworkFailure(err)) throw rpcUnavailable()
+      if (err instanceof EscrowError) throw err
       throw contractError(err instanceof Error ? err.message : String(err))
     }
   }
 
-  /** Runs an RPC call, turning connection failures into a clear 503. */
-  private async rpc<T>(call: () => Promise<T>): Promise<T> {
-    try {
-      return await call()
-    } catch (err) {
-      if (isNetworkFailure(err)) throw rpcUnavailable()
-      throw err
+  /**
+   * Runs an RPC call with a time limit. Connection failures become a clear 503 and timeouts a 504.
+   * Reads are tried once more after a short pause, since the failures seen on testnet are brief.
+   * Pass `retry: false` for anything that changes state, so it can never run twice.
+   */
+  private async rpc<T>(call: () => Promise<T>, { retry = true }: { retry?: boolean } = {}): Promise<T> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await this.withTimeout(call)
+      } catch (err) {
+        const timedOut = err instanceof RpcTimeout
+        if ((timedOut || isNetworkFailure(err)) && retry && attempt === 0) {
+          await new Promise((resolve) => setTimeout(resolve, this.retryDelayMs))
+          continue
+        }
+        if (timedOut) throw rpcTimeout(this.timeoutMs)
+        if (isNetworkFailure(err)) throw rpcUnavailable()
+        throw err
+      }
     }
+  }
+
+  private withTimeout<T>(call: () => Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new RpcTimeout()), this.timeoutMs)
+      call().then(
+        (value) => {
+          clearTimeout(timer)
+          resolve(value)
+        },
+        (err: unknown) => {
+          clearTimeout(timer)
+          reject(err)
+        },
+      )
+    })
   }
 
   private async isUnreachable(): Promise<boolean> {

@@ -21,6 +21,18 @@ const failures: { name: string; handle: (route: Route) => Promise<void>; message
     message: /The FarmPay server had a problem/,
   },
   {
+    name: 'the Stellar network times out (504 RPC_TIMEOUT)',
+    handle: (route) =>
+      route.fulfill({ status: 504, json: { error: { code: 'RPC_TIMEOUT', message: 'raw backend text' } } }),
+    message: /slow to answer right now\. Nothing was changed/,
+  },
+  {
+    name: 'too many requests (429 RATE_LIMITED)',
+    handle: (route) =>
+      route.fulfill({ status: 429, json: { error: { code: 'RATE_LIMITED', message: 'raw backend text' } } }),
+    message: /Too many requests in a short time/,
+  },
+  {
     name: 'host serving index.html for /api (200, not JSON)',
     handle: (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><html></html>' }),
     message: /unexpected response/,

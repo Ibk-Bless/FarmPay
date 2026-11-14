@@ -77,7 +77,7 @@ check('an account without a trustline gets "0"', r.status === 200 && r.body.bala
 check('the token is looked up once, then remembered', calls.filter((c) => c === 'escrow.token').length === 1, calls.join(','))
 check('the balance is read from the token contract', calls.includes('token.balance'))
 
-for (const bad of ['nope', 'C' + 'A'.repeat(55), HAS_USDC.slice(0, -1) + 'A']) {
+for (const bad of ['nope', 'C' + 'A'.repeat(55), HAS_USDC.slice(0, -1) + (HAS_USDC.endsWith('A') ? 'B' : 'A')]) {
   r = await get(`/accounts/${bad}/balance`)
   check(`invalid address "${bad.slice(0, 12)}…" is a 400 INVALID_ADDRESS`, r.status === 400 && r.body.error?.code === 'INVALID_ADDRESS', JSON.stringify(r))
 }

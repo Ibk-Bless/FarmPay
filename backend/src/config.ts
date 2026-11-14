@@ -7,6 +7,8 @@ export const config = {
   port: Number(process.env.PORT ?? 4000),
   rpcUrl: process.env.STELLAR_RPC_URL ?? 'https://soroban-testnet.stellar.org',
   networkPassphrase: process.env.STELLAR_NETWORK_PASSPHRASE ?? Networks.TESTNET,
+  // How long to wait for one Stellar RPC call before answering 504 RPC_TIMEOUT.
+  rpcTimeoutMs: Math.max(1000, nonNegative(process.env.RPC_TIMEOUT_MS, 10_000)),
   escrowContractId: process.env.ESCROW_CONTRACT_ID ?? '',
   // Comma-separated browser origins allowed to call the API. Unset allows any origin (development).
   corsOrigins: (process.env.CORS_ORIGIN ?? '')

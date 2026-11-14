@@ -165,7 +165,7 @@ export class Indexer {
       return 'found'
     } catch (err) {
       if (err instanceof EscrowError && err.code === 'ORDER_NOT_FOUND') return 'missing'
-      if (err instanceof EscrowError && err.code !== 'RPC_UNAVAILABLE') {
+      if (err instanceof EscrowError && err.code !== 'RPC_UNAVAILABLE' && err.code !== 'RPC_TIMEOUT') {
         this.options.log?.(`skipping order ${id}: ${err.code}`)
         return 'skipped'
       }
