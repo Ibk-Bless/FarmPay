@@ -125,6 +125,8 @@ export const api: typeof realApi = isDemo ? demoApi : realApi
 // User-facing messages for the API's error codes.
 const MESSAGES: Record<string, string> = {
   INDEX_UNAVAILABLE: "The list of orders isn't available right now. Please try again in a moment.",
+  RPC_TIMEOUT: 'The Stellar network is slow to answer right now. Nothing was changed. Please try again in a moment.',
+  RATE_LIMITED: 'Too many requests in a short time. Please wait a moment and try again.',
   NETWORK: "Can't reach the FarmPay server. Check your connection and try again.",
   SERVER_ERROR: 'The FarmPay server had a problem. Please try again in a moment.',
   BAD_RESPONSE: 'The FarmPay server sent an unexpected response. Please try again, or contact the people running this site.',

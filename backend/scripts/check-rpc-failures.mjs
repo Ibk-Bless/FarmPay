@@ -22,6 +22,7 @@ const COOP = 'GBPDUSWCRGZZUPY5EHZRXJXVQTBM3DDLKNTCZK5BJOPH5AN4DRZF5AHJ'
 // ---------- fake Stellar RPC ----------
 // `mode` decides how the network behaves for the scenario being run.
 let mode = { kind: 'up' }
+let sends = 0 // how many sendTransaction calls arrived
 const resultXdr = (name) =>
   new xdr.TransactionResult({ feeCharged: 100n, result: xdr.TransactionResultResult[name](), ext: xdr.TransactionResultExt.v0() }).toXDR('base64')
 
@@ -31,6 +32,9 @@ const fakeRpc = createServer((req, res) => {
   req.on('end', () => {
     if (mode.kind === 'down') return req.socket.destroy()
     const { id, method } = JSON.parse(body || '{}')
+    if (method === 'sendTransaction') sends++
+    if (mode.kind === 'hang') return // never answers
+    if (mode.kind === 'hang-once' && !mode.hung) return void (mode.hung = true) // the first call never answers
     const reply = (result) => {
       res.setHeader('content-type', 'application/json')
       res.end(JSON.stringify({ jsonrpc: '2.0', id, result }))
@@ -80,7 +84,7 @@ await new Promise((resolve) => fakeRpc.listen(0, '127.0.0.1', resolve))
 const rpcUrl = `http://127.0.0.1:${fakeRpc.address().port}`
 const port = await freePort()
 const backend = spawn('node', ['dist/index.js'], {
-  env: { ...process.env, PORT: String(port), ESCROW_CONTRACT_ID: ESCROW, STELLAR_RPC_URL: rpcUrl, LOG_REQUESTS: 'false' },
+  env: { ...process.env, PORT: String(port), ESCROW_CONTRACT_ID: ESCROW, STELLAR_RPC_URL: rpcUrl, LOG_REQUESTS: 'false', RPC_TIMEOUT_MS: '1000' },
   stdio: 'ignore',
 })
 const stop = () => { backend.kill('SIGKILL'); fakeRpc.close() }
@@ -116,16 +120,22 @@ const scenarios = [
   ['network says: not enough XLM', { kind: 'send-error', code: 'txInsufficientBalance' }, () => call('POST', '/transactions', { signedXdr: escrowTx() }), 409, 'INSUFFICIENT_FUNDS'],
   ['network says: try again later', { kind: 'try-again' }, () => call('POST', '/transactions', { signedXdr: escrowTx() }), 503, 'NETWORK_BUSY'],
   ['network refuses with an unknown reason', { kind: 'send-error' }, () => call('POST', '/transactions', { signedXdr: escrowTx() }), 502, 'SUBMIT_FAILED'],
+  // The RPC accepts the connection but never answers (the backend is started with a 1 second limit)
+  ['RPC hangs: read an order', { kind: 'hang' }, () => call('GET', '/orders/1'), 504, 'RPC_TIMEOUT'],
+  ['RPC hangs: create an order', { kind: 'hang' }, () => call('POST', '/orders', newOrder), 504, 'RPC_TIMEOUT'],
+  ['RPC hangs once, then answers: a read is retried and succeeds', { kind: 'hang-once' }, () => call('POST', '/orders', newOrder), 404, 'ACCOUNT_NOT_FOUND'],
+  ['RPC hangs on submit: uncertain, and never sent twice', { kind: 'hang' }, () => call('POST', '/transactions', { signedXdr: escrowTx() }), 502, 'SUBMIT_UNCERTAIN', () => sends === 1],
   // Connection lost after the transaction was sent: the user must not blindly retry
   ['connection lost after sending', { kind: 'sent-then-lost' }, () => call('POST', '/transactions', { signedXdr: escrowTx() }), 502, 'SUBMIT_UNCERTAIN'],
 ]
 
 let failed = 0
-for (const [name, nextMode, run, status, code] of scenarios) {
-  mode = nextMode
+for (const [name, nextMode, run, status, code, extra] of scenarios) {
+  mode = { ...nextMode }
+  sends = 0
   const started = Date.now()
   const got = await run()
-  const ok = got.status === status && got.code === code
+  const ok = got.status === status && got.code === code && (extra?.() ?? true)
   if (!ok) failed++
   const secs = ((Date.now() - started) / 1000).toFixed(1)
   console.log(`${ok ? 'ok  ' : 'FAIL'}  ${String(got.status).padEnd(4)} ${got.code.padEnd(22)} ${name} (${secs}s)${ok ? '' : `\n        expected ${status} ${code}; message: ${got.message}`}`)

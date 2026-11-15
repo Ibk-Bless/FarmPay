@@ -5,7 +5,9 @@ import { OrderIndex } from './indexer/orderIndex.js'
 import { EscrowService } from './stellar/escrow.js'
 
 const escrow = config.escrowContractId
-  ? new EscrowService(config.rpcUrl, config.networkPassphrase, config.escrowContractId)
+  ? new EscrowService(config.rpcUrl, config.networkPassphrase, config.escrowContractId, {
+      timeoutMs: config.rpcTimeoutMs,
+    })
   : undefined
 
 if (!escrow) {

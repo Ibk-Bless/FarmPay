@@ -42,6 +42,7 @@ Environment variables:
 | `STELLAR_NETWORK_PASSPHRASE` | testnet passphrase | Network the transactions are built for |
 | `ESCROW_CONTRACT_ID` | — | Deployed escrow contract (required for order endpoints) |
 | `CORS_ORIGIN` | — (any origin) | Comma-separated browser origins allowed to call the API, e.g. `https://farmpay.example`. **Set this when deploying.** The server warns at startup if it is empty |
+| `RPC_TIMEOUT_MS` | `10000` | How long to wait for one Stellar RPC call (minimum 1000). Reads are tried once more after a short pause; submitting a transaction is never retried. Past the limit the API answers `504 RPC_TIMEOUT` |
 | `RATE_LIMIT_MAX` | `60` | Requests one client may make per window on the order and transaction routes (`/api/health` is never limited). `0` turns the limit off. Over it, the API answers `429 RATE_LIMITED` with a `Retry-After` header |
 | `RATE_LIMIT_WINDOW_SECONDS` | `60` | Length of that window |
 | `TRUST_PROXY` | `0` | Number of reverse proxies in front of the API. Leave at `0` if clients connect directly. **Set it behind a proxy or load balancer**, otherwise every client shares the proxy's address and one limit; set too high, clients can dodge the limit by forging `X-Forwarded-For` |
