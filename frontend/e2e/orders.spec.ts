@@ -26,6 +26,32 @@ test.describe('create order', () => {
     })
   })
 
+  test('shows the buyer their USDC and warns when the order is more than they hold', async ({ openAs, api }) => {
+    api.balance = '500.25'
+    const page = await openAs('buyer', '/order/create')
+    await expect(page.getByText('You have 500.25 USDC')).toBeVisible()
+
+    await page.getByLabel('Amount (USDC)').fill('500.25')
+    await expect(page.getByText('You have 500.25 USDC')).toBeVisible() // exactly enough is fine
+
+    await page.getByLabel('Amount (USDC)').fill('500.2500001')
+    await expect(page.getByText('which is less than this order')).toBeVisible()
+
+    await page.getByLabel('Amount (USDC)').fill('1')
+    await expect(page.getByText('which is less than this order')).toHaveCount(0)
+  })
+
+  test('a balance that cannot be read never blocks creating an order', async ({ openAs, api }) => {
+    api.balance = null
+    const page = await openAs('buyer', '/order/create')
+    await page.getByLabel("Farmer's address").fill(ACCOUNTS.farmer)
+    await page.getByLabel("Cooperative's address").fill(ACCOUNTS.coop)
+    await page.getByLabel('Amount (USDC)').fill('99999999')
+    await expect(page.getByText(/You have/)).toHaveCount(0)
+    await page.getByRole('button', { name: 'Lock funds and create order' }).click()
+    await expect(page).toHaveURL(/\/order\/1$/)
+  })
+
   test('rejects invalid input before building a transaction', async ({ openAs, api }) => {
     const page = await openAs('buyer', '/order/create')
     const submit = page.getByRole('button', { name: 'Lock funds and create order' })

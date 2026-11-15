@@ -57,6 +57,8 @@ export class MockApi {
   /** False mimics the server still doing its first read of the chain. */
   listSynced = true
   listCalls = 0
+  /** What every account holds, or null to make the balance endpoint fail. */
+  balance: string | null = '1000000'
 
   seed(overrides: Partial<MockOrder> = {}): MockOrder {
     const id = String(this.nextId++)
@@ -98,6 +100,10 @@ export class MockApi {
     const body = (request.postDataJSON() ?? {}) as Record<string, unknown>
     const reply = (status: number, json: unknown) => route.fulfill({ status, json })
     const error = (status: number, code: string) => reply(status, { error: { code, message: code } })
+
+    if (request.method() === 'GET' && /^\/accounts\/[^/]+\/balance$/.test(path)) {
+      return this.balance === null ? error(503, 'RPC_UNAVAILABLE') : reply(200, { balance: this.balance })
+    }
 
     if (request.method() === 'GET' && path === '/orders') {
       this.listCalls++

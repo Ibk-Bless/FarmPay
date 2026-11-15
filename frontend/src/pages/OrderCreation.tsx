@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import WalletButton from '../components/WalletButton'
@@ -6,6 +6,8 @@ import { api } from '../lib/api'
 import { useWallet } from '../wallet/context'
 import { DEMO_ACCOUNTS } from '../demo/accounts'
 import { isDemo } from '../lib/mode'
+import { exceedsBalance } from '../lib/usdc'
+import { formatUsdc } from '../lib/format'
 import { STEP_LABELS, useTransaction } from '../wallet/useTransaction'
 
 const ACCOUNT_PATTERN = /^G[A-Z2-7]{55}$/
@@ -43,6 +45,20 @@ export default function OrderCreation() {
   const [reviewWindowHours, setReviewWindowHours] = useState(72)
   const [disputeWindowDays, setDisputeWindowDays] = useState(7)
   const [formError, setFormError] = useState<string | null>(null)
+  // The buyer's USDC, so a shortfall shows before signing. Only a hint: if it can't be read, say nothing.
+  const [balance, setBalance] = useState<string | null>(null)
+  useEffect(() => {
+    setBalance(null)
+    if (status !== 'connected' || !address) return
+    let current = true
+    api.getBalance(address).then(
+      (value) => current && setBalance(value),
+      () => {},
+    )
+    return () => {
+      current = false
+    }
+  }, [status, address])
 
   function validate(): string | null {
     if (!ACCOUNT_PATTERN.test(farmer)) return "Enter the farmer's Stellar address (starts with G)."
@@ -128,7 +144,13 @@ export default function OrderCreation() {
                   Amount (USDC)
                 </label>
                 <input id="amount" className={input} inputMode="decimal" placeholder="1840.50" value={amount}
-                  onChange={(e) => setAmount(e.target.value.trim())} />
+                  aria-describedby="balance-note" onChange={(e) => setAmount(e.target.value.trim())} />
+                <p id="balance-note" role="status" className={`mt-1 text-sm ${exceedsBalance(amount, balance) ? 'text-amber-800' : 'text-gray-500'}`}>
+                  {balance !== null &&
+                    (exceedsBalance(amount, balance)
+                      ? `You have ${formatUsdc(balance)}, which is less than this order. Add USDC to your wallet first.`
+                      : `You have ${formatUsdc(balance)}`)}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="deadline">

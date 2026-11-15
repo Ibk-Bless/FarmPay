@@ -48,6 +48,9 @@ test('the demo confirms a transaction without linking to an explorer', async ({ 
 test('a buyer creates an order with the prefilled demo accounts and it can be completed', async ({ page }) => {
   await page.goto('/#/order/create')
   await expect(page.getByLabel('Amount (USDC)')).toHaveValue('250')
+  await expect(page.getByText(/You have [\d,]+\.\d\d USDC/)).toBeVisible()
+  await page.getByLabel('Amount (USDC)').fill('999999')
+  await expect(page.getByText('which is less than this order')).toBeVisible()
   await page.getByLabel('Amount (USDC)').fill('99.5')
   await page.getByRole('button', { name: 'Lock funds and create order' }).click()
 
