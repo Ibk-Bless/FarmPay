@@ -1,0 +1,8 @@
+node_modules
+dist
+e2e
+e2e-demo
+e2e-pages
+test-results
+playwright-report
+.env*

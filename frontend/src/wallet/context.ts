@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react'
 
 export const NETWORK_PASSPHRASE =
-  import.meta.env.VITE_NETWORK_PASSPHRASE ?? 'Test SDF Network ; September 2015'
+  import.meta.env.VITE_NETWORK_PASSPHRASE || 'Test SDF Network ; September 2015'
 
 export type WalletStatus = 'loading' | 'not-installed' | 'disconnected' | 'connected'
 

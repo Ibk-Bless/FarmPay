@@ -1,0 +1,38 @@
+# Runs FarmPay without installing Node: `docker compose up --build`, then open http://localhost:3000.
+# Settings come from the environment or a `.env` file next to this one (see backend/.env.example).
+# ESCROW_CONTRACT_ID is required for order endpoints; `./setup.sh` deploys a contract and writes it
+# to backend/.env, so `cp backend/.env .env` is the quickest way to reuse it.
+services:
+  backend:
+    build: ./backend
+    environment:
+      ESCROW_CONTRACT_ID: ${ESCROW_CONTRACT_ID:-}
+      STELLAR_RPC_URL: ${STELLAR_RPC_URL:-https://soroban-testnet.stellar.org}
+      STELLAR_NETWORK_PASSPHRASE: ${STELLAR_NETWORK_PASSPHRASE:-Test SDF Network ; September 2015}
+      # The browser calls the frontend container, which forwards /api here, so this is its address.
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      # nginx in front of the backend: read the real client address for the request limit.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-60}
+      RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
+      RPC_TIMEOUT_MS: ${RPC_TIMEOUT_MS:-10000}
+      INDEX_POLL_MS: ${INDEX_POLL_MS:-5000}
+      INDEX_START_LEDGER: ${INDEX_START_LEDGER:-}
+    volumes:
+      - index:/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_NETWORK_PASSPHRASE: ${STELLAR_NETWORK_PASSPHRASE:-}
+    ports:
+      - "3000:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  index:
