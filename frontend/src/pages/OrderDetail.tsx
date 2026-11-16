@@ -8,6 +8,7 @@ import { useNow } from '../lib/clock'
 import { useWallet } from '../wallet/context'
 import { STEP_LABELS, useTransaction } from '../wallet/useTransaction'
 import TxReceipt from '../components/TxReceipt'
+import { usePolling } from '../lib/usePolling'
 
 const STATUS_TEXT: Record<OrderStatus, string> = {
   Funded: 'Funds are locked. Waiting for the farmer to accept.',
@@ -18,6 +19,9 @@ const STATUS_TEXT: Record<OrderStatus, string> = {
   Refunded: 'Cancelled. The buyer was refunded in full.',
   Resolved: 'Dispute resolved. The cooperative split the funds between farmer and buyer.',
 }
+
+/** How often an open order is checked for changes made by the other parties. */
+const POLL_MS = 15_000
 
 const HAPPY_PATH: OrderStatus[] = ['Funded', 'Accepted', 'Delivered', 'Released']
 
@@ -48,6 +52,18 @@ export default function OrderDetail() {
   useEffect(() => {
     load()
   }, [load])
+
+  // Pick up the other party's actions without a reload. A failed background refresh is ignored:
+  // the order on screen is still the last one we know, and the next poll tries again.
+  const finished = order?.status === 'Released' || order?.status === 'Refunded' || order?.status === 'Resolved'
+  usePolling(
+    () => {
+      if (busy) return // our own transaction is running and will reload when it ends
+      api.getOrder(orderId).then(setOrder, () => {})
+    },
+    POLL_MS,
+    order !== null && !finished,
+  )
 
 
   // The button that was clicked is disabled (and often removed) while the transaction runs, so

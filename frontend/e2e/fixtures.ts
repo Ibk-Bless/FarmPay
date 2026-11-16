@@ -59,6 +59,8 @@ export class MockApi {
   listCalls = 0
   /** What every account holds, or null to make the balance endpoint fail. */
   balance: string | null = '1000000'
+  /** How many times the order page asked for an order. */
+  orderReads = 0
 
   seed(overrides: Partial<MockOrder> = {}): MockOrder {
     const id = String(this.nextId++)
@@ -123,6 +125,7 @@ export class MockApi {
 
     const orderMatch = /^\/orders\/([^/]+)$/.exec(path)
     if (request.method() === 'GET' && orderMatch) {
+      this.orderReads++
       const order = this.orders.get(orderMatch[1])
       return order ? reply(200, order) : error(404, 'ORDER_NOT_FOUND')
     }
@@ -184,6 +187,8 @@ export interface WalletOptions {
   /** Already approved for this site, so the app reconnects without a click. */
   approved?: boolean
   network?: string
+  /** Take over the page's timers, so a test can move time forward with `page.clock`. */
+  fakeClock?: boolean
 }
 
 /** Fake Freighter extension: answers the freighter-api message protocol. */
@@ -234,6 +239,7 @@ export const test = base.extend<{ api: MockApi; openAs: OpenAs }>({
     await use(async (role, path, options = {}) => {
       const context = await newContext(browser, contexts)
       await api.attach(context)
+      if (options.fakeClock) await context.clock.install()
       await installWallet(context, ACCOUNTS[role], options)
       const page = await context.newPage()
       await page.goto(path)
