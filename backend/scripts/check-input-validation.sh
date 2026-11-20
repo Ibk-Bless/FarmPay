@@ -42,6 +42,7 @@ echo "Create order"
 check "amount over the i128 limit"            /api/orders "$(order 170141183460469231731687303715884105728)" INVALID_AMOUNT
 check "amount with 41 digits"                 /api/orders "$(order 99999999999999999999999999999999999999999)" INVALID_AMOUNT
 check "amount in scientific notation"         /api/orders "$(order 1e5)" INVALID_AMOUNT
+check "amount is zero"                         /api/orders "$(order 0)" INVALID_AMOUNT
 check "amount with 8 decimals"                /api/orders "$(order 1.12345678)" INVALID_AMOUNT
 check "amount is a number, not a string"      /api/orders "{\"buyer\":\"$B\",\"farmer\":\"$F\",\"arbiter\":\"$C\",\"amount\":100,\"deliveryDeadline\":\"2030-01-01T00:00:00Z\",\"reviewWindowHours\":72}" MISSING_FIELD
 check "review window overflows u64"           /api/orders "$(order 100 2030-01-01T00:00:00Z 10000000000000000)" INVALID_DEADLINE
