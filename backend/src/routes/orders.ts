@@ -85,11 +85,15 @@ export function ordersRouter(escrow: EscrowService, indexer?: Indexer): Router {
         )
       }
 
+      const amount = parseUsdc(requireString(body, 'amount'))
+      // The contract refuses an empty order; say so here, without an RPC call to find out.
+      if (amount <= 0n) throw new EscrowError('INVALID_AMOUNT', 'amount must be greater than 0')
+
       const xdr = await escrow.buildCreateOrder({
         buyer: requireAccount(body, 'buyer'),
         farmer: requireAccount(body, 'farmer'),
         arbiter: requireAccount(body, 'arbiter'),
-        amount: parseUsdc(requireString(body, 'amount')),
+        amount,
         deliveryDeadline: Math.floor(deadline / 1000),
         reviewWindow: reviewWindowHours * 3600,
         disputeWindow: disputeWindowDays * 24 * 3600,
