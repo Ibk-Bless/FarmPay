@@ -111,3 +111,23 @@ jobs:
           name: playwright-report
           path: frontend/playwright-report
           retention-days: 7
+
+  # The images build, start, and the proxy reaches the API. Needs no contract or network access.
+  docker:
+    name: Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Build and start
+        run: docker compose up --build --wait --wait-timeout 180
+      - name: The app and the proxied API answer
+        run: |
+          curl -fsS http://localhost:3000/api/health | grep -q '"status":"ok"'
+          curl -fsS http://localhost:3000/order/1 | grep -q '<div id="root">'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/nope)" = 404
+      - name: Logs
+        if: failure()
+        run: docker compose logs
+      - name: Stop
+        if: always()
+        run: docker compose down -v

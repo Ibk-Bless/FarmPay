@@ -89,6 +89,21 @@ npm run build
 
 Serve `frontend/dist/` from any static host. Route `/api` to the backend, either through a reverse proxy or your host's rewrite rules.
 
+## Docker
+
+`docker compose up --build` runs the backend and the frontend without installing Node, and serves the app on http://localhost:3000. The frontend container (nginx) serves the built app and forwards `/api` to the backend, so the browser talks to one address.
+
+```bash
+ESCROW_CONTRACT_ID=C... docker compose up --build
+```
+
+Put settings in a `.env` file next to `docker-compose.yml` instead if you prefer; `./setup.sh` writes `backend/.env`, so `cp backend/.env .env` reuses the contract it deployed. Compose passes these through (defaults as in the table above): `ESCROW_CONTRACT_ID`, `STELLAR_RPC_URL`, `STELLAR_NETWORK_PASSPHRASE`, `CORS_ORIGIN` (default `http://localhost:3000`), `TRUST_PROXY` (default `1`, because nginx sits in front), `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_SECONDS`, `RPC_TIMEOUT_MS`, `INDEX_POLL_MS`, `INDEX_START_LEDGER`.
+
+- The order index lives in the `index` volume, so it survives restarts. `docker compose down -v` deletes it; it is rebuilt from the chain.
+- The backend runs as an unprivileged user and has a health check on `/api/health`; the frontend only starts once it is healthy.
+- `STELLAR_NETWORK_PASSPHRASE` is also baked into the frontend at build time, so rebuild (`--build`) after changing it. Behind your own TLS-terminating proxy, publish the frontend's port 8080 and set `CORS_ORIGIN` to your public address.
+- CI builds the images and checks that the proxied API answers.
+
 ### Hosting the interactive demo
 
 The demo needs no backend. It is a static site that uses hash routes, so it works on any static host without rewrite rules. For a project page on GitHub Pages (served under `/FarmPay/`):
