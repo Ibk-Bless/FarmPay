@@ -57,6 +57,9 @@ jobs:
       # Fails on known high-severity vulnerabilities; lower severities are handled by Dependabot
       - run: npm audit --audit-level=high
       - run: npm run build
+      # The orders router with a fake escrow service: signers, arguments, validation, order id
+      - name: Router tests
+        run: node --test --no-warnings "test/*.test.mjs"
       # Malformed input must always be a 4xx. All cases fail before any network call, so no testnet needed.
       - name: Input validation checks
         env:
