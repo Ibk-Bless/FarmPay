@@ -424,7 +424,7 @@ function address(value: string): xdr.ScVal {
   return new Address(value).toScVal()
 }
 
-function contractError(message: string): EscrowError {
+export function contractError(message: string): EscrowError {
   const match = /Error\(Contract, #(\d+)\)/.exec(message)
   const known = match ? CONTRACT_ERRORS[Number(match[1])] : undefined
   if (known) return new EscrowError(known.code, message, known.status)
@@ -432,7 +432,7 @@ function contractError(message: string): EscrowError {
   return new EscrowError('SIMULATION_FAILED', message, 502)
 }
 
-function toOrder(raw: Record<string, unknown>): Order {
+export function toOrder(raw: Record<string, unknown>): Order {
   // Unit enum variants decode as a one-element array, e.g. ['Funded'].
   const status = Array.isArray(raw.status) ? raw.status[0] : raw.status
   return {
