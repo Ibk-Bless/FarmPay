@@ -114,12 +114,12 @@ A split limits either side's loss to half, so both have a reason to make sure th
 
 ### Events
 
-| Event | Topics | Data |
-|---|---|---|
-| `status_changed` | order id | new `OrderStatus` |
-| `dispute_opened` | order id | `reason` |
+| Event | Topics (in order) | Data (a map) | Emitted |
+|---|---|---|---|
+| `status_changed` | `status_changed`, order id (`u64`) | `status`: the new `OrderStatus` | once per transition, including creation |
+| `dispute_opened` | `dispute_opened`, order id (`u64`) | `reason`: the buyer's text | after the `status_changed` for `Disputed` |
 
-The backend indexes these events to build farmer delivery histories.
+A rejected call emits nothing. The backend's order index watches `status_changed` to know which orders to read again. These names, topics and the order of events are covered by tests in `src/test.rs`, so changing them is a breaking change for watchers.
 
 ## Building
 
@@ -135,7 +135,7 @@ stellar contract build
 cargo test
 ```
 
-The tests in `src/test.rs` cover the happy path, auto-release, both cancellation paths, dispute splits (including bounds), window timing, invalid transitions, authorization, storage lifetimes, and the dispute deadline (rulings up to and after the boundary, the default split, odd amounts, and that a ruling and a default settlement are mutually exclusive).
+The tests in `src/test.rs` cover the happy path, auto-release, both cancellation paths, dispute splits (including bounds), window timing, invalid transitions, authorization, storage lifetimes, events (one per transition, their order, names and topics), and the dispute deadline (rulings up to and after the boundary, the default split, odd amounts, and that a ruling and a default settlement are mutually exclusive).
 
 `src/test_invariants.rs` adds randomized scenarios. Each one is a seeded sequence of creations, actions (valid and not) and waits, some landing a second before, on or after a deadline. Every result is compared with an independent model of this specification, and after every step the contract must hold exactly what its open orders are owed, with no order paying out more than its amount or twice. A second test checks that the generator reaches every state and error, so passing means something. A failure prints the seed and every step so far. `FARMPAY_FUZZ_CASES=5000 cargo test random_scenarios` runs far more scenarios (about 5 minutes).
 
