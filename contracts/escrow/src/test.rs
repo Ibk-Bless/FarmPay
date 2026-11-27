@@ -2,8 +2,10 @@
 
 use super::*;
 use soroban_sdk::testutils::storage::{Instance as _, Persistent as _};
-use soroban_sdk::testutils::{Address as _, Ledger};
+use soroban_sdk::testutils::{Address as _, Events as _, Ledger};
 use soroban_sdk::token::{StellarAssetClient, TokenClient};
+use soroban_sdk::{xdr, Event};
+extern crate std;
 
 const AMOUNT: i128 = 10_000_000_000; // 1,000 USDC (7 decimals)
 const DELIVERY_DEADLINE: u64 = 10_000;
@@ -679,4 +681,164 @@ fn a_disputed_order_stays_live_until_its_dispute_deadline_plus_buffer() {
     // A short one (7 days + 14-day buffer) falls under the minimum, which applies instead.
     let short = s.order_with(OrderStatus::Disputed, 0, 3 * DAY);
     assert_eq!(s.ttl_for(&short), ORDER_MIN_TTL);
+}
+
+// ---------- events ----------
+// The backend's order index finds changed orders from these, and so can any other watcher.
+// `events().all()` holds only the last contract call, so each is checked right after its call.
+
+impl Setup<'_> {
+    /// Asserts the escrow's own events (not the token's) from the last call, in order.
+    fn assert_status(&self, id: u64, status: OrderStatus) {
+        let event = StatusChanged {
+            order_id: id,
+            status,
+        };
+        assert_eq!(
+            self.env
+                .events()
+                .all()
+                .filter_by_contract(&self.client.address),
+            [event.to_xdr(&self.env, &self.client.address)]
+        );
+    }
+
+    fn assert_no_events(&self) {
+        let none: [soroban_sdk::xdr::ContractEvent; 0] = [];
+        assert_eq!(
+            self.env
+                .events()
+                .all()
+                .filter_by_contract(&self.client.address),
+            none
+        );
+    }
+}
+
+#[test]
+fn every_transition_on_the_happy_path_emits_one_status_change() {
+    let s = setup();
+    let id = s.create();
+    s.assert_status(id, OrderStatus::Funded);
+    s.client.accept_order(&id);
+    s.assert_status(id, OrderStatus::Accepted);
+    s.client.mark_delivered(&id);
+    s.assert_status(id, OrderStatus::Delivered);
+    s.client.confirm_delivery(&id);
+    s.assert_status(id, OrderStatus::Released);
+}
+
+#[test]
+fn claiming_and_cancelling_emit_the_final_status() {
+    let s = setup();
+    let id = s.delivered();
+    s.env
+        .ledger()
+        .set_timestamp(s.client.get_order(&id).review_deadline + 1);
+    s.client.claim_payment(&id);
+    s.assert_status(id, OrderStatus::Released);
+
+    let s = setup();
+    let id = s.create();
+    s.client.cancel_order(&id);
+    s.assert_status(id, OrderStatus::Refunded);
+}
+
+#[test]
+fn opening_a_dispute_emits_the_status_then_the_reason() {
+    let s = setup();
+    let id = s.delivered();
+    let reason = String::from_str(&s.env, "Half the crates were spoiled");
+    s.client.open_dispute(&id, &reason);
+
+    let status = StatusChanged {
+        order_id: id,
+        status: OrderStatus::Disputed,
+    };
+    let opened = DisputeOpened {
+        order_id: id,
+        reason,
+    };
+    assert_eq!(
+        s.env.events().all().filter_by_contract(&s.client.address),
+        [
+            status.to_xdr(&s.env, &s.client.address),
+            opened.to_xdr(&s.env, &s.client.address),
+        ]
+    );
+
+    s.client.resolve_dispute(&id, &(AMOUNT / 4));
+    s.assert_status(id, OrderStatus::Resolved);
+}
+
+#[test]
+fn settling_an_unanswered_dispute_emits_resolved() {
+    let s = setup();
+    let id = s.delivered();
+    s.client
+        .open_dispute(&id, &String::from_str(&s.env, "No ruling"));
+    s.env
+        .ledger()
+        .set_timestamp(s.client.get_order(&id).dispute_deadline + 1);
+    s.client.expire_dispute(&id);
+    s.assert_status(id, OrderStatus::Resolved);
+}
+
+#[test]
+fn a_rejected_call_emits_nothing() {
+    let s = setup();
+    let id = s.create();
+    assert_eq!(
+        s.client.try_mark_delivered(&id),
+        Err(Ok(Error::InvalidStatus))
+    );
+    s.assert_no_events();
+}
+
+#[test]
+fn the_event_names_and_topics_are_what_watchers_filter_on() {
+    // The checks above build the expected event from the same Rust type the contract uses, so
+    // renaming that type would pass them. This one spells out what goes on the network: the
+    // backend matches the first topic `status_changed` and reads the order id from the second.
+    let s = setup();
+    let id = s.delivered();
+    s.client
+        .open_dispute(&id, &String::from_str(&s.env, "Spoiled"));
+
+    let events = s.env.events().all().filter_by_contract(&s.client.address);
+    let raw: std::vec::Vec<&xdr::ContractEventV0> = events
+        .events()
+        .iter()
+        .map(|event| match &event.body {
+            xdr::ContractEventBody::V0(body) => body,
+        })
+        .collect();
+
+    assert_eq!(raw.len(), 2);
+    for (event, name) in raw.iter().zip(["status_changed", "dispute_opened"]) {
+        assert_eq!(
+            event.topics.as_slice(),
+            [
+                xdr::ScVal::Symbol(xdr::ScSymbol(name.try_into().unwrap())),
+                xdr::ScVal::U64(id),
+            ]
+        );
+    }
+
+    // The data is a map keyed by field name.
+    let key = |name: &str| xdr::ScVal::Symbol(xdr::ScSymbol(name.try_into().unwrap()));
+    let field = |event: &xdr::ContractEventV0, name: &str| match &event.data {
+        xdr::ScVal::Map(Some(map)) => map
+            .iter()
+            .find(|entry| entry.key == key(name))
+            .map(|entry| entry.val.clone()),
+        other => panic!("event data is not a map: {other:?}"),
+    };
+    assert!(field(raw[0], "status").is_some());
+    assert_eq!(
+        field(raw[1], "reason"),
+        Some(xdr::ScVal::String(xdr::ScString(
+            "Spoiled".try_into().unwrap()
+        )))
+    );
 }
